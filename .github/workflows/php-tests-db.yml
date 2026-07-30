@@ -11,7 +11,7 @@ on:
         default: 'mbstring, intl, xml, dom, curl, zip'
       install-command:
         type: string
-        default: 'composer install --prefer-dist --no-progress --no-interaction'
+        default: 'composer install --prefer-dist --no-progress --no-interaction --optimize-autoloader'
       bootstrap-command:
         description: 'Command to run before tests (migrations, fixtures, ...)'
         type: string
@@ -43,10 +43,15 @@ on:
       badge-output:
         type: string
         default: 'badges/php-coverage.svg'
+      badge-branch:
+        description: 'Branch on which the badge is committed (default: main)'
+        type: string
+        default: 'main'
 jobs:
   phpunit:
     name: PHPUnit (db)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
 
     services:
       database:
@@ -69,18 +74,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # pcov plutôt que xdebug : couverture de lignes suffisante pour les badges,
+      # nettement plus rapide. Désactivé quand aucune couverture n'est demandée
+      # (un driver de couverture actif ralentit PHPUnit même sans collecte).
       - name: Setup PHP ${{ inputs.php-version }}
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ inputs.php-version }}
           extensions: ${{ inputs.extensions }}
-          coverage: xdebug
+          coverage: ${{ inputs.coverage-type == 'none' && 'none' || 'pcov' }}
           tools: composer:v2
+
+      # actions/cache ne fait pas d'expansion shell : le chemin doit être calculé
+      # dans un step préalable, pas écrit en $(...) dans le paramètre path.
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Composer
         uses: actions/cache@v4
         with:
-          path: $(composer config cache-files-dir)
+          path: ${{ steps.composer-cache.outputs.dir }}
           key: composer-php${{ inputs.php-version }}-${{ hashFiles('**/composer.lock') }}
           restore-keys: composer-php${{ inputs.php-version }}-
 
@@ -101,7 +115,7 @@ jobs:
           APP_ENV: test
 
       - name: Generate coverage badge
-        if: inputs.coverage-type == 'badge' && github.event_name == 'push'
+        if: inputs.coverage-type == 'badge' && github.event_name == 'push' && github.ref == format('refs/heads/{0}', inputs.badge-branch)
         run: |
           php -r '
           $xml = simplexml_load_file("${{ inputs.coverage-xml-path }}");
@@ -116,7 +130,7 @@ jobs:
           '
 
       - name: Commit coverage badge
-        if: inputs.coverage-type == 'badge' && github.event_name == 'push'
+        if: inputs.coverage-type == 'badge' && github.event_name == 'push' && github.ref == format('refs/heads/{0}', inputs.badge-branch)
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: 'Update PHP coverage badge'
