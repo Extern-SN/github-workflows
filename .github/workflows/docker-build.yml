@@ -107,6 +107,25 @@ jobs:
             bash "${{ inputs.smoke-test-script }}"
           fi
 
+      # La base Trivy (~100 Mo) est retéléchargée à chaque run sans ce cache,
+      # faute de quoi TRIVY_CACHE_DIR (par défaut sous le workspace, jamais
+      # persisté entre deux runs) repart de zéro à chaque fois. Clé datée
+      # (la base se met à jour environ toutes les 6h côté Trivy) avec repli
+      # sur le cache le plus récent disponible si la clé du jour est absente.
+      - name: Compute date for Trivy DB cache key
+        if: inputs.with-trivy
+        id: trivy-date
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Trivy DB
+        if: inputs.with-trivy
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ steps.trivy-date.outputs.date }}
+          restore-keys: |
+            trivy-db-
+
       - name: Scan CVE (Trivy)
         if: inputs.with-trivy
         uses: aquasecurity/trivy-action@master
@@ -117,6 +136,7 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           trivyignores: ${{ inputs.trivy-ignore-file }}
+          cache-dir: ~/.cache/trivy
 
       - name: Push with attestations
         if: inputs.push
