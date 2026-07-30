@@ -1,0 +1,52 @@
+name: Python Tests
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        type: string
+        default: '3.12'
+      install-command:
+        type: string
+        default: 'pip install -e .[dev]'
+      lint-command:
+        description: 'Lint command (ruff, flake8, ... — skipped if empty)'
+        type: string
+        default: ''
+      test-command:
+        type: string
+        default: 'pytest -q'
+      cache-dependency-path:
+        description: 'Glob of files whose hash keys the pip cache (pyproject.toml, requirements*.txt, ...)'
+        type: string
+        default: '**/pyproject.toml'
+
+jobs:
+  pytest:
+    name: Python Tests
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Le cache pip est géré nativement par setup-python : il est invalidé quand
+      # le fichier de dépendances (cache-dependency-path) change. Le glob doit
+      # matcher au moins un fichier du dépôt, sinon le step échoue.
+      - name: Setup Python ${{ inputs.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: 'pip'
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+      - name: Install dependencies
+        run: ${{ inputs.install-command }}
+
+      - name: Lint
+        if: inputs.lint-command != ''
+        run: ${{ inputs.lint-command }}
+
+      - name: Run tests
+        run: ${{ inputs.test-command }}

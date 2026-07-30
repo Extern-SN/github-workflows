@@ -10,6 +10,7 @@ Workflows GitHub Actions réutilisables pour tous les services ExternIT.
 | `php-tests.yml` | Tests PHPUnit (sans base de données) |
 | `php-tests-db.yml` | Tests PHPUnit avec service de base de données |
 | `js-tests.yml` | Tests JavaScript/TypeScript avec couverture |
+| `python-tests.yml` | Lint + tests Python (pytest) avec cache pip |
 
 ---
 
@@ -118,6 +119,31 @@ jobs:
       test-command: 'npm run test:coverage'
       coverage-type: badge
 ```
+
+---
+
+## python-tests.yml
+
+```yaml
+jobs:
+  tests:
+    uses: ExternIT-repo/github-workflows/.github/workflows/python-tests.yml@main
+    with:
+      python-version: '3.12'
+      install-command: 'pip install -e .[dev]'
+      lint-command: 'ruff check src tests'
+      test-command: 'pytest -q'
+```
+
+**Inputs**
+
+| Nom | Type | Défaut | Description |
+|-----|------|--------|-------------|
+| `python-version` | string | `3.12` | Version Python |
+| `install-command` | string | `pip install -e .[dev]` | Installation des dépendances |
+| `lint-command` | string | `` | Lint (ignoré si vide) |
+| `test-command` | string | `pytest -q` | Commande de test |
+| `cache-dependency-path` | string | `**/pyproject.toml` | Fichier(s) dont le hash invalide le cache pip ; doit matcher au moins un fichier |
 
 ---
 
