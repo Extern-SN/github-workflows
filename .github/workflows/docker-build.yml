@@ -131,7 +131,7 @@ jobs:
       # ne doit pas pouvoir casser les builds de tous les dépôts consommateurs.
       - name: Scan CVE (Trivy)
         if: inputs.with-trivy
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         env:
           # Authentifie le téléchargement de la base Trivy (ghcr.io) pour
           # éviter la limite de taux anonyme, partagée entre tous les jobs
