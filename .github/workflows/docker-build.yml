@@ -129,6 +129,12 @@ jobs:
       - name: Scan CVE (Trivy)
         if: inputs.with-trivy
         uses: aquasecurity/trivy-action@master
+        env:
+          # Authentifie le téléchargement de la base Trivy (ghcr.io) pour
+          # éviter la limite de taux anonyme, partagée entre tous les jobs
+          # sur les IP des runners GitHub-hosted (surtout utile en cache froid,
+          # le cache actions/cache ci-dessus couvrant le cas courant).
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           image-ref: local-ci:latest
           format: table
