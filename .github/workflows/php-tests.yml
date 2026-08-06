@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # pcov plutôt que xdebug : couverture de lignes suffisante pour les badges,
       # nettement plus rapide. Désactivé quand aucune couverture n'est demandée

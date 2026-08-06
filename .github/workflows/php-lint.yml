@@ -1,0 +1,48 @@
+name: PHP Lint
+
+on:
+  workflow_call:
+    inputs:
+      php-version:
+        type: string
+        required: true
+      extensions:
+        description: 'PHP extensions to install (comma-separated)'
+        type: string
+        default: 'mbstring, intl, xml, dom, curl, zip'
+      install-command:
+        type: string
+        default: 'composer install --prefer-dist --no-progress --no-interaction --optimize-autoloader'
+      lint-command:
+        description: 'Static analysis command. Le périmètre analysé se règle dans le fichier de config du projet (ex: phpstan.neon > paths), pas ici.'
+        type: string
+        default: 'vendor/bin/phpstan analyse --no-progress'
+
+jobs:
+  lint:
+    name: Analyse statique
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup PHP ${{ inputs.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ inputs.php-version }}
+          extensions: ${{ inputs.extensions }}
+          tools: composer:v2
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: $(composer config cache-files-dir)
+          key: composer-lint-php${{ inputs.php-version }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: composer-lint-php${{ inputs.php-version }}-
+
+      - name: Install dependencies
+        run: ${{ inputs.install-command }}
+
+      - name: Run static analysis
+        run: ${{ inputs.lint-command }}
