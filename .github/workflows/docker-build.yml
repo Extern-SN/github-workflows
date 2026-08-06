@@ -147,6 +147,10 @@ jobs:
           ignore-unfixed: true
           trivyignores: ${{ inputs.trivy-ignore-file }}
           cache-dir: ~/.cache/trivy
+          # Ce job ne veut que le scan CVE (with-trivy) : sans ce réglage, Trivy scanne
+          # aussi secrets et mauvaises configurations par défaut, plus lent et hors
+          # périmètre de cette étape (amendement 2026-08-06).
+          scanners: vuln
 
       - name: Push with attestations
         if: inputs.push
