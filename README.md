@@ -1,6 +1,6 @@
-# ExternIT Reusable Workflows
+# Extern SN Reusable Workflows
 
-Workflows GitHub Actions réutilisables pour tous les services ExternIT.
+Workflows GitHub Actions réutilisables pour tous les services Extern SN.
 
 ## Workflows disponibles
 
@@ -19,7 +19,7 @@ Workflows GitHub Actions réutilisables pour tous les services ExternIT.
 ```yaml
 jobs:
   docker:
-    uses: ExternIT-repo/github-workflows/.github/workflows/docker-build.yml@main
+    uses: Extern-SN/github-workflows/.github/workflows/docker-build.yml@main
     with:
       registry: docker.io                      # ou ghcr.io
       image-name: myorg/myapp
@@ -81,7 +81,7 @@ Le webhook reçoit un JSON simple, volontairement agnostique du provider:
 ```yaml
 jobs:
   tests:
-    uses: ExternIT-repo/github-workflows/.github/workflows/php-tests.yml@main
+    uses: Extern-SN/github-workflows/.github/workflows/php-tests.yml@main
     with:
       php-version: '8.2'
       test-command: 'composer test:coverage'
@@ -95,7 +95,7 @@ jobs:
 ```yaml
 jobs:
   tests:
-    uses: ExternIT-repo/github-workflows/.github/workflows/php-tests-db.yml@main
+    uses: Extern-SN/github-workflows/.github/workflows/php-tests-db.yml@main
     with:
       php-version: '8.4'
       test-command: 'composer test-with-coverage'
@@ -113,7 +113,7 @@ jobs:
 ```yaml
 jobs:
   tests:
-    uses: ExternIT-repo/github-workflows/.github/workflows/js-tests.yml@main
+    uses: Extern-SN/github-workflows/.github/workflows/js-tests.yml@main
     with:
       node-version: '22'
       test-command: 'npm run test:coverage'
@@ -127,7 +127,7 @@ jobs:
 ```yaml
 jobs:
   tests:
-    uses: ExternIT-repo/github-workflows/.github/workflows/python-tests.yml@main
+    uses: Extern-SN/github-workflows/.github/workflows/python-tests.yml@main
     with:
       python-version: '3.12'
       install-command: 'pip install -e .[dev]'
