@@ -1,0 +1,132 @@
+name: Release Tag
+
+# Crée automatiquement un tag Git SemVer (vX.Y.Z) à chaque merge sur main.
+# Le chiffre incrémenté dépend du label posé sur la PR mergée :
+#
+#   breaking → majeur : X+1.0.0  (changement incompatible avec la version précédente)
+#   feature  → mineur : X.Y+1.0  (nouvelle fonctionnalité)
+#   fix / hotfix / chore → patch : X.Y.Z+1
+#
+# S'il n'existe aucun tag, le premier est toujours v1.0.0 : le label de la PR
+# qui déclenche ce premier tag n'incrémente rien (bug corrigé le 2026-08-27 —
+# la version copiée-collée par repo avant mutualisation appliquait toujours
+# l'incrément du label, y compris sur le tout premier tag, produisant v1.0.1/
+# v1.1.0/v2.0.0 selon le label au lieu de v1.0.0).
+#
+# Le tag créé déclenche ensuite le workflow de build de l'image Docker du
+# dépôt appelant (workflow_dispatch sur docker-workflow-file).
+
+on:
+  workflow_call:
+    inputs:
+      docker-workflow-file:
+        description: 'Fichier du workflow à déclencher via workflow_dispatch après la création du tag'
+        type: string
+        default: 'docker-build.yml'
+
+permissions:
+  contents: write       # pour créer et pousser le tag Git
+  pull-requests: read   # pour lire les labels de la PR mergée
+  actions: write        # pour déclencher docker-workflow-file via workflow_dispatch
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # nécessaire pour accéder à l'historique complet des tags
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+      # Récupère le numéro de la PR qui vient d'être mergée en cherchant
+      # le SHA du commit dans la liste des PRs mergées sur main.
+      # Puis lit les labels posés sur cette PR.
+      - name: Get merged PR labels
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER=$(gh pr list \
+            --state merged \
+            --base main \
+            --search "${{ github.sha }}" \
+            --json number \
+            --jq '.[0].number')
+
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No merged PR found"
+            exit 1
+          fi
+
+          echo "PR_NUMBER=$PR_NUMBER"
+
+          LABELS=$(gh pr view "$PR_NUMBER" \
+            --json labels \
+            --jq '.labels[].name')
+
+          echo "labels<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$LABELS" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      # Calcule le prochain tag en fonction du dernier tag existant et du label de la PR.
+      # Si aucun tag n'existe encore, le premier tag est toujours v1.0.0 : le label ne
+      # s'applique qu'à partir du deuxième tag.
+      # Règle de priorité au-delà du premier tag : breaking > feature > patch (fix/hotfix/chore)
+      - name: Calculate next version
+        id: version
+        env:
+          LABELS: ${{ steps.pr.outputs.labels }}
+        run: |
+          LAST_TAG=$(git tag --sort=-v:refname | grep '^v' | head -n 1)
+
+          echo "Last tag: $LAST_TAG"
+          echo "Labels:"
+          echo "$LABELS"
+
+          if [ -z "$LAST_TAG" ]; then
+            NEXT_TAG="v1.0.0"
+          else
+            VERSION="${LAST_TAG#v}"
+            IFS='.' read -r X Y Z <<< "$VERSION"
+
+            # "breaking" : changement incompatible — on incrémente le chiffre majeur
+            # et on remet mineur + patch à zéro pour repartir d'une base propre.
+            if echo "$LABELS" | grep -q "^breaking$"; then
+              X=$((X + 1)); Y=0; Z=0
+
+            # "feature" : nouvelle fonctionnalité — on incrémente le chiffre mineur
+            # et on remet le patch à zéro (les corrections précédentes sont incluses).
+            elif echo "$LABELS" | grep -q "^feature$"; then
+              Y=$((Y + 1)); Z=0
+
+            # fix / hotfix / chore : changement sans impact sur l'interface ou l'API
+            # — on incrémente uniquement le patch.
+            else
+              Z=$((Z + 1))
+            fi
+
+            NEXT_TAG="v${X}.${Y}.${Z}"
+          fi
+
+          echo "NEXT_TAG=$NEXT_TAG" >> "$GITHUB_ENV"
+          echo "Next tag: $NEXT_TAG"
+
+      - name: Create git tag
+        run: |
+          git tag "$NEXT_TAG"
+          git push origin "$NEXT_TAG"
+
+      # Un tag poussé avec le GITHUB_TOKEN par défaut ne déclenche pas les workflows
+      # écoutant "on.push.tags" (limitation GitHub Actions anti-boucle infinie).
+      # On déclenche donc explicitement le workflow de build via l'API workflow_dispatch.
+      - name: Trigger Docker build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run "${{ inputs.docker-workflow-file }}" --ref "$NEXT_TAG"
