@@ -23,15 +23,34 @@ on:
         description: 'Fichier du workflow à déclencher via workflow_dispatch après la création du tag'
         type: string
         default: 'docker-build.yml'
+      changelog-file:
+        description: >
+          Fichier de changelog au format Keep a Changelog. S'il est renseigné et
+          présent dans le dépôt, sa section "Non publié" est promue en version
+          datée avant la création du tag, et son contenu sert de corps à la
+          GitHub Release. Laisser vide pour désactiver (comportement d'origine).
+        type: string
+        default: ''
+      create-release:
+        description: >
+          Publie une GitHub Release sur le tag créé. Le corps reprend la section
+          promue du changelog, ou les notes générées par GitHub à défaut.
+        type: boolean
+        default: false
 
+# Moindre privilège : lecture seule par défaut, les écritures ne sont accordées
+# qu'au job qui en a besoin. Un "write" déclaré au niveau du workflow est
+# pénalisé par OpenSSF Scorecard (Token-Permissions) même s'il ne sert qu'à un job.
 permissions:
-  contents: write       # pour créer et pousser le tag Git
-  pull-requests: read   # pour lire les labels de la PR mergée
-  actions: write        # pour déclencher docker-workflow-file via workflow_dispatch
+  contents: read
 
 jobs:
   release:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write       # pour créer et pousser le tag Git et le commit de changelog
+      pull-requests: read   # pour lire les labels de la PR mergée
+      actions: write        # pour déclencher docker-workflow-file via workflow_dispatch
 
     steps:
       - name: Checkout repository
@@ -117,10 +136,55 @@ jobs:
           echo "NEXT_TAG=$NEXT_TAG" >> "$GITHUB_ENV"
           echo "Next tag: $NEXT_TAG"
 
+      # Promeut la section "Non publié" du changelog en version datée, et pousse ce
+      # commit AVANT la création du tag : le tag doit pointer sur un arbre dont le
+      # changelog est déjà à jour, sans quoi la release décrirait un contenu absent.
+      #
+      # Le commit porte un marqueur de saut de CI, et le dépôt appelant doit
+      # exclure son changelog du déclencheur (paths-ignore), sans quoi ce push
+      # relance un run qui échouera faute de PR mergée associée.
+      - name: Promote CHANGELOG section
+        if: inputs.changelog-file != ''
+        env:
+          CHANGELOG: ${{ inputs.changelog-file }}
+        run: |
+          if [ ! -f "$CHANGELOG" ]; then
+            echo "$CHANGELOG absent du dépôt, étape ignorée"
+            exit 0
+          fi
+
+          DATE=$(date -u +%Y-%m-%d)
+          sed -i "0,/^## \[Non publié\]/s//## [Non publié]\n\n## [$NEXT_TAG] - $DATE/" "$CHANGELOG"
+
+          # Corps de la section fraîchement promue, pour les notes de release
+          awk -v tag="## [$NEXT_TAG]" '
+            index($0, tag) == 1 { flag = 1; next }
+            /^## \[/ && flag { exit }
+            flag { print }
+          ' "$CHANGELOG" > /tmp/release-notes.md
+
+          git add "$CHANGELOG"
+          git commit -m "docs(changelog): publie $NEXT_TAG [skip ci]"
+          git push origin HEAD:main
+
       - name: Create git tag
         run: |
           git tag "$NEXT_TAG"
           git push origin "$NEXT_TAG"
+
+      # Une release GitHub rend la version lisible hors du dépôt. Le corps reprend
+      # la section promue du changelog, avec repli sur les notes générées par
+      # GitHub si elle est vide ou si le changelog est désactivé.
+      - name: Create GitHub Release
+        if: inputs.create-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -s /tmp/release-notes.md ]; then
+            gh release create "$NEXT_TAG" --title "$NEXT_TAG" --notes-file /tmp/release-notes.md
+          else
+            gh release create "$NEXT_TAG" --title "$NEXT_TAG" --generate-notes
+          fi
 
       # Un tag poussé avec le GITHUB_TOKEN par défaut ne déclenche pas les workflows
       # écoutant "on.push.tags" (limitation GitHub Actions anti-boucle infinie).
