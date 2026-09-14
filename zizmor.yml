@@ -1,0 +1,14 @@
+# Politique d'épinglage des actions, appliquée par ci-security.yml.
+#
+#   actions/*    : actions officielles GitHub, tag accepté (ref-pin)
+#   Extern-SN/*  : nos propres workflows réutilisables, tag accepté, la branche
+#                  main de ce dépôt étant protégée et les appels épinglés sur @v1
+#   *            : toute action tierce doit être épinglée par SHA (hash-pin),
+#                  un tag mobile pouvant être redirigé vers du code hostile
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        "actions/*": ref-pin
+        "Extern-SN/*": ref-pin
+        "*": hash-pin
