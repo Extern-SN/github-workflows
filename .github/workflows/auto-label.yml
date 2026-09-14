@@ -1,0 +1,78 @@
+name: Auto Label PR
+
+# Pose automatiquement le label de release dès l'ouverture d'une PR,
+# en déduisant le type depuis le préfixe du nom de branche.
+#
+# Cela évite d'avoir à poser le label manuellement pour les cas courants.
+# Les labels "chore" et "breaking" ne peuvent pas être déduits du nom de branche
+# et doivent être ajoutés à la main.
+#
+# Le dépôt appelant garde le déclencheur, un workflow réutilisable ne pouvant
+# pas définir son propre "on". Appel type :
+#
+#   on:
+#     pull_request:
+#       types: [opened]
+#
+#   jobs:
+#     label:
+#       permissions:
+#         pull-requests: write
+#       uses: Extern-SN/github-workflows/.github/workflows/auto-label.yml@v1
+
+on:
+  workflow_call:
+    inputs:
+      prefix-map:
+        description: >
+          Correspondance préfixe de branche vers label, au format JSON.
+          La valeur par défaut couvre la convention du Groupe.
+        type: string
+        default: '{"feature/": "feature", "fix/": "fix", "hotfix/": "hotfix"}'
+
+permissions:
+  contents: read
+
+jobs:
+  label:
+    name: Pose du label de release
+    runs-on: ubuntu-22.04
+    permissions:
+      pull-requests: write  # nécessaire pour ajouter un label sur la PR
+
+    steps:
+      - name: Apply label from branch name
+        uses: actions/github-script@v7
+        env:
+          PREFIX_MAP: ${{ inputs.prefix-map }}
+        with:
+          script: |
+            const branch = context.payload.pull_request.head.ref;
+
+            // La correspondance vient d'un input, lu depuis l'environnement et
+            // jamais interpolé dans le corps du script : une valeur hostile ne
+            // peut pas s'exécuter ici.
+            let map;
+            try {
+              map = JSON.parse(process.env.PREFIX_MAP);
+            } catch (e) {
+              core.setFailed(`prefix-map n'est pas un JSON valide : ${e.message}`);
+              return;
+            }
+
+            const label = Object.entries(map).find(([prefix]) => branch.startsWith(prefix))?.[1];
+
+            if (label) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                labels: [label],
+              });
+              console.log(`Label "${label}" applied from branch "${branch}"`);
+            } else {
+              // Branche non reconnue : l'auteur doit ajouter "chore" ou "breaking"
+              // manuellement. validate-pr.yml bloquera le merge tant qu'aucun
+              // label n'est posé.
+              console.log(`No auto-label for branch "${branch}", add "chore" or "breaking" manually`);
+            }

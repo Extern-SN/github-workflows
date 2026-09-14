@@ -1,0 +1,97 @@
+name: Validate PR
+
+# Vérifie que chaque PR respecte les conventions du Groupe avant de pouvoir
+# être mergée : nommage de la branche source, et présence d'exactement un
+# label de release (qui détermine l'incrément de version au merge).
+#
+# Le dépôt appelant garde le déclencheur, un workflow réutilisable ne pouvant
+# pas définir son propre "on". Appel type :
+#
+#   on:
+#     pull_request:
+#       branches: [dev, main]
+#       types: [opened, edited, synchronize, labeled, unlabeled]
+#
+#   jobs:
+#     validate:
+#       uses: Extern-SN/github-workflows/.github/workflows/validate-pr.yml@v1
+
+on:
+  workflow_call:
+    inputs:
+      enforce-naming-on-base:
+        description: >
+          Branche de base sur laquelle la règle de nommage s'applique.
+          "dev" (défaut) laisse libres les PR d'intégration dev vers main.
+          "*" applique la règle à toutes les PR.
+        type: string
+        default: 'dev'
+      branch-pattern:
+        description: 'Expression régulière que doit respecter la branche source'
+        type: string
+        default: '^(feature|fix|hotfix)/.+$'
+      labels:
+        description: 'Labels de release acceptés, un par ligne'
+        type: string
+        default: |
+          feature
+          fix
+          hotfix
+          chore
+          breaking
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Conventions de PR
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      pull-requests: read  # lecture des labels de la PR
+
+    steps:
+      # Vérifie que le nom de la branche source suit la convention :
+      #   feature/* → nouvelle fonctionnalité
+      #   fix/*     → correction de bug
+      #   hotfix/*  → correction urgente
+      #
+      # Les références et le motif sont passés par l'environnement et jamais
+      # interpolés dans le texte du script : un nom de branche construit pour
+      # cela ne peut pas s'exécuter dans le runner (injection de script,
+      # OpenSSF Dangerous-Workflow).
+      - name: Validate branch naming
+        env:
+          BRANCH: ${{ github.head_ref }}
+          BASE: ${{ github.base_ref }}
+          ENFORCE_ON: ${{ inputs.enforce-naming-on-base }}
+          PATTERN: ${{ inputs.branch-pattern }}
+        run: |
+          echo "Branch: $BRANCH"
+          echo "Base: $BASE"
+
+          if [ "$ENFORCE_ON" != "*" ] && [ "$BASE" != "$ENFORCE_ON" ]; then
+            echo "Règle de nommage non applicable aux PR vers \"$BASE\"."
+            exit 0
+          fi
+
+          if [[ ! "$BRANCH" =~ $PATTERN ]]; then
+            echo "Invalid branch naming."
+            echo "Expected pattern: $PATTERN"
+            exit 1
+          fi
+
+          echo "Nommage conforme."
+
+      # Vérifie qu'exactement 1 label de release est posé sur la PR.
+      # Ce label détermine quel chiffre de la version sera incrémenté au merge :
+      #   feature  → bump mineur (1.X.0)
+      #   fix / hotfix / chore → bump patch (1.0.X)
+      #   breaking → bump majeur (X.0.0)
+      - name: Validate labels
+        uses: mheap/github-action-required-labels@v5
+        with:
+          mode: exactly
+          count: 1
+          labels: ${{ inputs.labels }}
