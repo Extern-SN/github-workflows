@@ -11,6 +11,9 @@ Workflows GitHub Actions réutilisables pour tous les services Extern SN.
 | `php-tests-db.yml` | Tests PHPUnit avec service de base de données |
 | `js-tests.yml` | Tests JavaScript/TypeScript avec couverture |
 | `python-tests.yml` | Lint + tests Python (pytest) avec cache pip |
+| `release-tag.yml` | Tag SemVer au merge sur `main`, changelog et GitHub Release |
+| `validate-pr.yml` | Contrôle du nommage de branche et du label de release |
+| `auto-label.yml` | Pose du label de release depuis le préfixe de branche |
 
 ---
 
@@ -144,6 +147,105 @@ jobs:
 | `lint-command` | string | `` | Lint (ignoré si vide) |
 | `test-command` | string | `pytest -q` | Commande de test |
 | `cache-dependency-path` | string | `**/pyproject.toml` | Fichier(s) dont le hash invalide le cache pip ; doit matcher au moins un fichier |
+
+---
+
+## release-tag.yml
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['CHANGELOG.md', 'badges/**']
+
+jobs:
+  release:
+    permissions:
+      contents: write
+      pull-requests: read
+      actions: write
+    uses: Extern-SN/github-workflows/.github/workflows/release-tag.yml@v1
+    with:
+      changelog-file: CHANGELOG.md
+      create-release: true
+```
+
+**Inputs**
+
+| Nom | Type | Défaut | Description |
+|-----|------|--------|-------------|
+| `docker-workflow-file` | string | `docker-build.yml` | Workflow déclenché en `workflow_dispatch` après la création du tag |
+| `changelog-file` | string | `` | Changelog Keep a Changelog. Sa section `## [Non publié]` est promue en version datée avant le tag. Vide pour désactiver |
+| `create-release` | boolean | `false` | Publie une GitHub Release, corps repris de la section promue |
+
+Si `changelog-file` est renseigné, le workflow pousse un commit de publication sur
+`main`. **Le dépôt appelant doit exclure ce fichier de son propre déclencheur**
+(`paths-ignore`), sans quoi ce push relance un run qui échouera faute de PR
+mergée associée.
+
+---
+
+## validate-pr.yml
+
+```yaml
+on:
+  pull_request:
+    branches: [dev, main]
+    types: [opened, edited, synchronize, labeled, unlabeled]
+
+jobs:
+  validate:
+    uses: Extern-SN/github-workflows/.github/workflows/validate-pr.yml@v1
+```
+
+**Inputs**
+
+| Nom | Type | Défaut | Description |
+|-----|------|--------|-------------|
+| `enforce-naming-on-base` | string | `dev` | Branche de base sur laquelle la règle de nommage s'applique. `*` pour toutes |
+| `branch-pattern` | string | `^(feature\|fix\|hotfix)/.+$` | Motif que doit respecter la branche source |
+| `labels` | string | les 5 labels du Groupe | Labels de release acceptés, un par ligne |
+
+---
+
+## auto-label.yml
+
+```yaml
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  label:
+    permissions:
+      pull-requests: write
+    uses: Extern-SN/github-workflows/.github/workflows/auto-label.yml@v1
+```
+
+**Inputs**
+
+| Nom | Type | Défaut | Description |
+|-----|------|--------|-------------|
+| `prefix-map` | string | `{"feature/": "feature", "fix/": "fix", "hotfix/": "hotfix"}` | Correspondance préfixe de branche vers label, en JSON |
+
+`chore` et `breaking` ne se déduisent pas d'un nom de branche et restent à poser
+à la main.
+
+---
+
+## Épinglage de version
+
+Les nouveaux exemples pointent sur `@v1`, pas sur `@main`. Ces workflows
+s'exécutent avec `contents: write` sur la branche de production des dépôts
+appelants : un commit sur `main` de ce dépôt se propagerait autrement à tout le
+parc sans revue côté consommateur.
+
+- `@v1` est un tag mobile, avancé délibérément après relecture.
+- `@vX.Y.Z` épingle une version précise.
+- `@main` ne devrait plus être utilisé par un nouveau dépôt.
+
+Les exemples plus anciens de ce README sont encore en `@main`, le temps que les
+dépôts consommateurs migrent.
 
 ---
 
