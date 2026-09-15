@@ -229,9 +229,38 @@ jobs:
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
 | `prefix-map` | string | `{"feature/": "feature", "fix/": "fix", "hotfix/": "hotfix"}` | Correspondance préfixe de branche vers label, en JSON |
+| `integration-branch` | string | `dev` | Branche dont le label se déduit des PR transportées. Vide pour désactiver |
+| `label-ranking` | string | `["breaking", "feature", "fix", "hotfix", "chore"]` | Labels de version du plus fort au plus faible |
 
 `chore` et `breaking` ne se déduisent pas d'un nom de branche et restent à poser
-à la main.
+à la main sur une PR ordinaire.
+
+**Les PR d'intégration**
+
+Une branche d'intégration s'appelle `dev` et ne dit donc **rien de son contenu**.
+Le préfixe ne peut rien en déduire, et une PR `dev` vers `main` échouait de ce
+fait **systématiquement** au contrôle des conventions. Pire, `release-tag.yml`
+se rabattait alors sur un incrément de correctif : une fonctionnalité sortait
+sous un numéro de patch.
+
+Les PR que l'intégration transporte, elles, sont toutes labellisées, c'est la
+règle du dépôt. L'information existe déjà, ce workflow la lit : il relève les
+numéros de PR dans les messages de commit (commit de fusion ou titre suffixé
+après un squash), récupère leurs labels, et retient **le plus fort** selon
+`label-ranking`.
+
+Une seule `feature` parmi dix `fix` impose donc un incrément mineur, ce qui est
+le comportement attendu : la fonctionnalité ne doit pas sortir sous un numéro de
+correctif.
+
+Si aucune PR transportée ne porte de label, le job **n'échoue pas**, il émet un
+avertissement. C'est `validate-pr.yml` qui bloque la fusion, avec son message à
+lui. Deux checks rouges pour une même cause n'aident personne.
+
+> [!note]
+> Le job ne pose jamais un second label sur une PR qui en porte déjà un de
+> version : `validate-pr.yml` en exige **exactement un**, et un second ferait
+> échouer le contrôle au lieu de le satisfaire.
 
 ---
 
