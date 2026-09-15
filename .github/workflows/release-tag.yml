@@ -192,5 +192,6 @@ jobs:
       - name: Trigger Docker build
         env:
           GH_TOKEN: ${{ github.token }}
+          WORKFLOW_FILE: ${{ inputs.docker-workflow-file }}
         run: |
-          gh workflow run "${{ inputs.docker-workflow-file }}" --ref "$NEXT_TAG"
+          gh workflow run "$WORKFLOW_FILE" --ref "$NEXT_TAG"
