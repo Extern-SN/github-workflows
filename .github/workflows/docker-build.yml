@@ -63,11 +63,11 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3.12.0
 
       - name: Compute tags
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051  # v5.10.0
         with:
           images: ${{ inputs.registry }}/${{ inputs.image-name }}
           tags: |
@@ -78,7 +78,7 @@ jobs:
 
       - name: Login to registry
         if: inputs.push
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3.7.0
         with:
           registry: ${{ inputs.registry }}
           username: ${{ secrets.registry-username }}
@@ -89,7 +89,7 @@ jobs:
       # On build donc en deux étapes : local sans attestations, puis push avec attestations depuis le cache GHA.
       - name: Build local (smoke test + Trivy)
         id: build-local
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6.19.2
         with:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}
@@ -104,9 +104,13 @@ jobs:
       - name: Smoke test
         env:
           CI_IMAGE: local-ci:latest
+          # Le chemin passe par l'environnement plutot que par interpolation :
+          # une expression developpee dans le texte du script peut en sortir et
+          # executer autre chose que ce qu'elle designe.
+          SMOKE_TEST_SCRIPT: ${{ inputs.smoke-test-script }}
         run: |
-          if [ -f "${{ inputs.smoke-test-script }}" ]; then
-            bash "${{ inputs.smoke-test-script }}"
+          if [ -f "$SMOKE_TEST_SCRIPT" ]; then
+            bash "$SMOKE_TEST_SCRIPT"
           fi
 
       # La base Trivy (~100 Mo) est retéléchargée à chaque run sans ce cache,
@@ -132,7 +136,7 @@ jobs:
       # ne doit pas pouvoir casser les builds de tous les dépôts consommateurs.
       - name: Scan CVE (Trivy)
         if: inputs.with-trivy
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         env:
           # Authentifie le téléchargement de la base Trivy (ghcr.io) pour
           # éviter la limite de taux anonyme, partagée entre tous les jobs
@@ -154,7 +158,7 @@ jobs:
 
       - name: Push with attestations
         if: inputs.push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6.19.2
         with:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}
