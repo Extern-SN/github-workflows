@@ -1,0 +1,176 @@
+name: Debt Report
+
+# Rapport récurrent de dette technique pour les projets dont la stack est
+# classée LEGACY ou EOL au référentiel SDU.
+#
+# Le SDU rend ce workflow obligatoire dès qu'une stack est LEGACY ou EOL : un
+# projet EOL n'est pas pénalisé parce qu'il est vieux, il l'est parce qu'il est
+# vieux sans être traité comme tel. Le traitement attendu, c'est l'image gelée
+# (tag "legacy-frozen-<version>") et ce rapport.
+#
+# Ce que ce workflow apporte par rapport à un simple rappel : le compteur de
+# rappels. Une issue portant 14 rappels dit en un coup d'oeil que la dette a
+# 14 mois, ce qu'aucun ticket ouvert une fois ne dit.
+#
+# Le dépôt appelant garde le déclencheur, un workflow réutilisable ne pouvant
+# pas définir son propre "on". Appel type :
+#
+#   on:
+#     schedule:
+#       - cron: '0 8 1 * *'   # le 1er de chaque mois, 08:00 UTC
+#     workflow_dispatch:
+#
+#   jobs:
+#     dette:
+#       permissions:
+#         issues: write
+#       uses: Extern-SN/github-workflows/.github/workflows/debt-report.yml@v1
+#       with:
+#         stack: PHP 7.2-apache
+#         motif: >
+#           Debian buster est EOL, ses dépôts APT sont servis depuis l'archive.
+#           Le scan Trivy est désactivé dans docker-build.yml, il échouerait
+#           quasi systématiquement sur cette base.
+#         echeance: Montée en PHP 8.3 à planifier, non arbitrée à ce jour.
+
+on:
+  workflow_call:
+    inputs:
+      stack:
+        description: >
+          Stack concernée, telle qu'elle est nommée au référentiel SDU.
+          Exemple : "PHP 7.2-apache", "Python 3.9", "Odoo 14".
+        type: string
+        required: true
+      statut:
+        description: 'Statut SDU de la stack : EOL ou LEGACY.'
+        type: string
+        default: 'EOL'
+      motif:
+        description: >
+          Ce qui bloque ou ce que la situation impose aujourd'hui.
+          Texte libre, repris tel quel dans le corps de l'issue.
+        type: string
+        default: ''
+      echeance:
+        description: >
+          Échéance de sortie de dette, si elle est arbitrée.
+          Laisser vide dit explicitement qu'aucune échéance n'existe.
+        type: string
+        default: ''
+      label:
+        description: >
+          Label posé sur l'issue de suivi. Créé s'il n'existe pas.
+          Laisser vide pour ne poser aucun label.
+        type: string
+        default: 'dette-technique'
+      titre:
+        description: >
+          Titre de l'issue de suivi. Par défaut, construit depuis la stack.
+          À ne changer qu'en connaissance de cause : c'est la clé de
+          rapprochement entre deux exécutions.
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    name: Rapport de dette technique
+    runs-on: ubuntu-22.04
+    permissions:
+      issues: write  # création et mise à jour de l'issue de suivi
+
+    steps:
+      # Aucun checkout : ce job ne lit pas le dépôt, il n'écrit qu'une issue.
+      # Ne pas cloner évite de laisser un jeton dans le répertoire de travail.
+      #
+      # Toutes les valeurs venant de l'appelant passent par l'environnement et
+      # ne sont jamais interpolées dans le texte du script : un motif rédigé
+      # pour cela ne peut pas s'exécuter dans le runner.
+      - name: Créer ou mettre à jour l'issue de suivi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          STACK: ${{ inputs.stack }}
+          STATUT: ${{ inputs.statut }}
+          MOTIF: ${{ inputs.motif }}
+          ECHEANCE: ${{ inputs.echeance }}
+          LABEL: ${{ inputs.label }}
+          TITRE: ${{ inputs.titre }}
+        run: |
+          set -euo pipefail
+
+          titre="$TITRE"
+          if [ -z "$titre" ]; then
+            titre="[Dette technique] Stack $STACK $STATUT"
+          fi
+
+          # Recherche de l'issue existante. On exige l'égalité stricte du titre,
+          # sans quoi deux dettes voisines fusionneraient dans la même issue.
+          #
+          # Le titre est comparé via env.TITRE_RESOLU plutôt qu'inséré dans le
+          # programme jq : un titre portant un guillemet casserait la syntaxe.
+          export TITRE_RESOLU="$titre"
+          numero=$(gh issue list --state open --limit 100 \
+            --json number,title \
+            --jq 'map(select(.title == env.TITRE_RESOLU)) | .[0].number // empty')
+
+          if [ -n "$MOTIF" ]; then
+            bloc_motif="**Situation**
+
+          $MOTIF"
+          else
+            bloc_motif="**Situation** : non renseignée par le dépôt."
+          fi
+
+          if [ -n "$ECHEANCE" ]; then
+            bloc_echeance="**Échéance** : $ECHEANCE"
+          else
+            bloc_echeance="**Échéance** : aucune échéance arbitrée à ce jour."
+          fi
+
+          corps="Suivi automatique de dette technique (SDU v1.1).
+
+          La stack **$STACK** est classée **$STATUT** au référentiel SDU. Le
+          référentiel n'exige pas qu'elle soit migrée immédiatement, il exige
+          qu'elle soit *traitée* : image applicative gelée sur un tag
+          \`legacy-frozen-<version>\`, et dette suivie par ce rapport. Sans ce
+          traitement, la note du projet est plafonnée au grade C, quel que soit
+          le reste.
+
+          $bloc_motif
+
+          $bloc_echeance
+
+          ---
+
+          Ce ticket est mis à jour automatiquement. **Ne pas le fermer à la
+          main** tant que la stack n'a pas changé : chaque rappel ajouté
+          ci-dessous mesure l'âge de la dette."
+
+          if [ -n "$numero" ]; then
+            # Le compteur est ce qui donne sa valeur au ticket : il rend l'âge
+            # de la dette lisible sans avoir à lire l'historique.
+            rappels=$(gh issue view "$numero" --json comments --jq '.comments | length')
+            rappels=$((rappels + 1))
+
+            gh issue edit "$numero" --body "$corps"
+            gh issue comment "$numero" --body "Rappel n°${rappels}, $(date -u '+%Y-%m-%d'). Stack **$STACK** toujours en **$STATUT**."
+            echo "Issue #$numero mise à jour (rappel n°${rappels})."
+            echo "### Dette technique : rappel n°${rappels}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            if [ -n "$LABEL" ]; then
+              # --force rend la commande idempotente : le label peut déjà exister.
+              gh label create "$LABEL" \
+                --description "Suivi de dette technique (stack LEGACY ou EOL)" \
+                --color 'B60205' --force
+              numero=$(gh issue create --title "$titre" --body "$corps" --label "$LABEL" \
+                | grep -oE '[0-9]+$')
+            else
+              numero=$(gh issue create --title "$titre" --body "$corps" | grep -oE '[0-9]+$')
+            fi
+            echo "Issue #$numero créée."
+            echo "### Dette technique : issue de suivi #$numero créée" >> "$GITHUB_STEP_SUMMARY"
+          fi
