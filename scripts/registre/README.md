@@ -72,18 +72,24 @@ un accès au cluster. Déclarer le tag dans les manifestes reste la vraie répon
 
 ## Ce qu'une purge de tags ne règle pas
 
-Relevé sur `ndiasexternit/wordpress-direxi` après un passage complet de ces
-scripts, 17 tags ramenés à 7 :
+Mesuré sur `ndiasexternit/wordpress-direxi`, en deux temps.
 
-| Mesure | Valeur |
-|---|---|
-| somme brute des 7 tags restants | 3,6 Go, couches largement partagées |
-| `storage_size` réel du dépôt | **62,41 Go** |
+| Opération | Tags | `storage_size` |
+|---|---|---|
+| état initial | 17 | 62,41 Go |
+| après purge des tags par ces scripts | 7 | **62,41 Go**, inchangé |
+| après suppression des manifestes sans tag, à la main | 5 | **8,05 Go** |
 
-**Environ 95% du volume est dans des manifestes sans tag.** Une purge de tags est
-donc un travail d'hygiène et de lisibilité, pas une opération de stockage. Le
-mesurer avant de s'y lancer évite de chercher des gigaoctets là où il n'y en a pas :
+La purge de tags n'a rien rendu. Le nettoyage des manifestes orphelins a rendu
+**54 Go, soit 87% du dépôt**.
+
+Une purge de tags est donc un travail d'hygiène et de lisibilité, pas une opération
+de stockage. Confondre les deux fait passer des heures sur 3% du problème :
 `registre-inventaire.sh` affiche `storage_size` en premier pour cette raison.
+
+> [!tip] Lire la mesure globale avant d'optimiser
+> `storage_size` est rendu par la route des métadonnées du dépôt, disponible dès la
+> première requête. Sommer la taille des tags ne mesure que ce qu'on sait nommer.
 
 L'origine est structurelle. Un pointeur mutable comme `dev` désigne une nouvelle
 image à chaque build et abandonne la précédente, qui perd son seul nom. Soixante
