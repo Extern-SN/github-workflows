@@ -17,6 +17,14 @@ Workflows GitHub Actions réutilisables pour tous les services Extern SN.
 | `ci-security.yml` | Audit des workflows GitHub Actions (actionlint + zizmor) |
 | `debt-report.yml` | Rapport récurrent de dette technique pour les stacks LEGACY ou EOL |
 
+## Scripts d'entretien
+
+Outils de parc, exécutés à la main, hors CI.
+
+| Dossier | Description |
+|---------|-------------|
+| `scripts/registre/` | Inventaire et purge des tags d'un dépôt Docker Hub, liste de conservation construite sur le cluster |
+
 ---
 
 ## docker-build.yml
