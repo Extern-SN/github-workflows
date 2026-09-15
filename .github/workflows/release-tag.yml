@@ -15,6 +15,17 @@ name: Release Tag
 #
 # Le tag créé déclenche ensuite le workflow de build de l'image Docker du
 # dépôt appelant (workflow_dispatch sur docker-workflow-file).
+#
+# Deux garde-fous, ajoutés le 2026-09-15 après deux releases erronées :
+#
+#   - une PR sans label de version fait échouer le workflow, au lieu d'être
+#     traitée comme un correctif. Un numéro de version publié doit résulter
+#     d'une décision, jamais d'un repli silencieux ;
+#   - une section de changelog promue sans contenu fait échouer le workflow
+#     avant tout commit, tag ou release, au lieu de publier une version vide.
+#
+# Les deux échecs sont rattrapables sans rien défaire : corriger la cause sur
+# la PR ou le changelog, puis relancer le run.
 
 on:
   workflow_call:
@@ -37,6 +48,15 @@ on:
           promue du changelog, ou les notes générées par GitHub à défaut.
         type: boolean
         default: false
+      sync-branch:
+        description: >
+          Branche de développement vers laquelle reporter le commit de promotion
+          du changelog, après la création du tag. Sans ce report, la branche de
+          développement conserve en section "Non publié" des entrées déjà
+          publiées, et la release suivante les republie sous un nouveau numéro.
+          Laisser vide pour désactiver.
+        type: string
+        default: ''
 
 # Moindre privilège : lecture seule par défaut, les écritures ne sont accordées
 # qu'au job qui en a besoin. Un "write" déclaré au niveau du workflow est
@@ -89,9 +109,28 @@ jobs:
             --json labels \
             --jq '.labels[].name')
 
-          echo "labels<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$LABELS" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          # Une PR sans label de version est une décision de version qui n'a pas
+          # été prise. Sans ce contrôle, le calcul ci-dessous la traite comme un
+          # "chore" et publie un correctif : le numéro publié devient alors le
+          # résultat d'un repli silencieux, pas d'un choix. Constaté sur deux
+          # releases consécutives le 2026-09-15, dont une qui ajoutait un
+          # contrôle de sécurité et méritait un incrément mineur.
+          #
+          # L'échec est rattrapable : poser le label sur la PR mergée, puis
+          # relancer ce run. Rien n'a encore été commité, tagué ni publié.
+          if ! echo "$LABELS" | grep -qE '^(breaking|feature|fix|hotfix|chore)$'; then
+            echo "::error title=Label de version manquant::La PR #$PR_NUMBER ne porte aucun label de version. Attendu exactement un parmi breaking, feature, fix, hotfix, chore. Posez-le sur la PR puis relancez ce workflow."
+            echo "Labels trouvés : ${LABELS:-aucun}"
+            exit 1
+          fi
+
+          # Redirections groupées : shellcheck SC2129 sur trois ">>" consécutifs
+          # vers le même fichier. Constat préexistant, corrigé au passage.
+          {
+            echo "labels<<EOF"
+            echo "$LABELS"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       # Calcule le prochain tag en fonction du dernier tag existant et du label de la PR.
       # Si aucun tag n'existe encore, le premier tag est toujours v1.0.0 : le label ne
@@ -163,6 +202,24 @@ jobs:
             flag { print }
           ' "$CHANGELOG" > /tmp/release-notes.md
 
+          # Une version sans contenu ne trace rien. Le cas se produit quand la
+          # section "Non publié" est vide au moment du merge, ou qu'un titre de
+          # niveau 2 s'est glissé juste en dessous : le sed ci-dessus insère
+          # alors le titre de version devant une section sans corps.
+          #
+          # Le test porte sur la présence d'un caractère non blanc, et non sur
+          # la taille du fichier : une section vide produit un fichier d'un seul
+          # saut de ligne, que "test -s" considère comme non vide. C'est
+          # exactement ce qui a laissé passer une release au corps vide le
+          # 2026-09-15, le repli --generate-notes n'ayant jamais été atteint.
+          #
+          # L'échec intervient avant le commit, le tag et la release : rien n'est
+          # publié à moitié. Renseigner la section "Non publié" puis relancer.
+          if ! grep -q '[^[:space:]]' /tmp/release-notes.md; then
+            echo "::error title=Section de changelog vide::La section promue $NEXT_TAG n'a aucun contenu. Vérifiez que la section \"Non publié\" de $CHANGELOG est renseignée et qu'aucun titre de niveau 2 ne la suit immédiatement, puis relancez ce workflow."
+            exit 1
+          fi
+
           git add "$CHANGELOG"
           git commit -m "docs(changelog): publie $NEXT_TAG [skip ci]"
           git push origin HEAD:main
@@ -195,3 +252,40 @@ jobs:
           WORKFLOW_FILE: ${{ inputs.docker-workflow-file }}
         run: |
           gh workflow run "$WORKFLOW_FILE" --ref "$NEXT_TAG"
+
+      # Reporte le commit de promotion vers la branche de développement. Sans ce
+      # report, celle-ci conserve en section "Non publié" des entrées déjà
+      # publiées, et la release suivante les republie sous un nouveau numéro.
+      #
+      # Cette étape est volontairement la dernière : le tag, la release et le
+      # build sont déjà faits et restent valides même si le report échoue. Un
+      # run rouge dont l'étape en échec porte ce nom signifie donc "release
+      # publiée, report à faire à la main", et non "release ratée".
+      #
+      # Le report se fait par un vrai merge, jamais par recopie du contenu : git
+      # doit connaître le commit de promotion comme ancêtre. Recopier le texte
+      # crée deux ajouts indépendants du même titre de version, que git conserve
+      # tous les deux au merge suivant, ce qui vide la section "Non publié" et
+      # casse la promotion d'après.
+      - name: Back-merge vers la branche de développement
+        if: inputs.sync-branch != '' && inputs.changelog-file != ''
+        env:
+          SYNC_BRANCH: ${{ inputs.sync-branch }}
+        run: |
+          git fetch origin main || true
+
+          if ! git fetch origin "$SYNC_BRANCH"; then
+            echo "::warning title=Branche de développement absente::$SYNC_BRANCH n'existe pas sur origin, report ignoré."
+            exit 0
+          fi
+
+          git checkout -B "$SYNC_BRANCH" "origin/$SYNC_BRANCH"
+
+          if git merge --no-edit -m "merge: reporte la promotion de $NEXT_TAG depuis main" origin/main; then
+            git push origin "$SYNC_BRANCH"
+            echo "Promotion de $NEXT_TAG reportée sur $SYNC_BRANCH"
+          else
+            git merge --abort || true
+            echo "::error title=Report en conflit::Le merge de main dans $SYNC_BRANCH est en conflit. La release $NEXT_TAG est publiée et valide : seul le report reste à faire à la main."
+            exit 1
+          fi
