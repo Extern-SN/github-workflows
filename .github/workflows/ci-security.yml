@@ -1,0 +1,96 @@
+name: CI Security
+
+# Audite les workflows GitHub Actions du dépôt appelant :
+#
+#   actionlint : validité et correction (syntaxe, expressions, shellcheck sur
+#                les blocs run, actions inexistantes)
+#   zizmor     : sécurité (injection de template, déclencheurs dangereux,
+#                permissions trop larges, actions non épinglées)
+#
+# Aucun SAST applicatif ne couvre ce périmètre : PHPStan analyse du PHP, pas le
+# YAML de .github/workflows. C'est pourtant là que se logent les injections de
+# script, qui s'exécutent dans le runner avec le jeton du dépôt.
+#
+# Le dépôt appelant garde le déclencheur, un workflow réutilisable ne pouvant
+# pas définir son propre "on". Appel type :
+#
+#   on:
+#     pull_request:
+#       paths: ['.github/workflows/**']
+#     push:
+#       branches: [main, dev]
+#       paths: ['.github/workflows/**']
+#
+#   jobs:
+#     security:
+#       uses: Extern-SN/github-workflows/.github/workflows/ci-security.yml@v1
+
+on:
+  workflow_call:
+    inputs:
+      min-severity:
+        description: >
+          Sévérité zizmor à partir de laquelle le job échoue.
+          informational, low, medium ou high.
+        type: string
+        default: 'high'
+      zizmor-config:
+        description: >
+          Fichier de configuration zizmor du dépôt appelant. S'il est absent,
+          la politique par défaut de zizmor s'applique (SHA exigé partout).
+        type: string
+        default: 'zizmor.yml'
+      actionlint-version:
+        description: 'Version d''actionlint à installer'
+        type: string
+        default: '1.7.7'
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    name: Audit des workflows
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      # Binaire officiel récupéré par version explicite plutôt que par une
+      # action tierce : une dépendance de moins dans la chaîne.
+      - name: Install actionlint
+        env:
+          VERSION: ${{ inputs.actionlint-version }}
+        run: |
+          curl -sSLo actionlint.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${VERSION}/actionlint_${VERSION}_linux_amd64.tar.gz"
+          tar -xzf actionlint.tar.gz actionlint
+          sudo mv actionlint /usr/local/bin/
+          actionlint --version
+
+      - name: Run actionlint
+        run: actionlint -color
+
+      - name: Install zizmor
+        run: |
+          pipx install zizmor
+          zizmor --version
+
+      - name: Run zizmor
+        env:
+          SEVERITY: ${{ inputs.min-severity }}
+          CONFIG: ${{ inputs.zizmor-config }}
+        run: |
+          args=(--no-progress --min-severity "$SEVERITY")
+          if [ -f "$CONFIG" ]; then
+            echo "Configuration zizmor : $CONFIG"
+            args+=(--config "$CONFIG")
+          else
+            echo "Aucune configuration zizmor, politique par défaut (SHA exigé partout)"
+          fi
+          zizmor "${args[@]}" .github/workflows/

@@ -14,6 +14,7 @@ Workflows GitHub Actions réutilisables pour tous les services Extern SN.
 | `release-tag.yml` | Tag SemVer au merge sur `main`, changelog et GitHub Release |
 | `validate-pr.yml` | Contrôle du nommage de branche et du label de release |
 | `auto-label.yml` | Pose du label de release depuis le préfixe de branche |
+| `ci-security.yml` | Audit des workflows GitHub Actions (actionlint + zizmor) |
 
 ---
 
@@ -230,6 +231,53 @@ jobs:
 
 `chore` et `breaking` ne se déduisent pas d'un nom de branche et restent à poser
 à la main.
+
+---
+
+## ci-security.yml
+
+```yaml
+on:
+  pull_request:
+    paths: ['.github/workflows/**']
+  push:
+    branches: [main, dev]
+    paths: ['.github/workflows/**']
+
+jobs:
+  security:
+    uses: Extern-SN/github-workflows/.github/workflows/ci-security.yml@v1
+```
+
+Audite les workflows du dépôt appelant avec **actionlint** (validité, expressions,
+shellcheck sur les blocs `run`) et **zizmor** (injection de template, déclencheurs
+dangereux, permissions trop larges, actions non épinglées).
+
+Aucun SAST applicatif ne couvre ce périmètre : PHPStan analyse du PHP, pas le YAML
+de `.github/workflows`. C'est pourtant là que se logent les injections de script,
+qui s'exécutent dans le runner avec le jeton du dépôt.
+
+**Inputs**
+
+| Nom | Type | Défaut | Description |
+|-----|------|--------|-------------|
+| `min-severity` | string | `high` | Sévérité zizmor à partir de laquelle le job échoue |
+| `zizmor-config` | string | `zizmor.yml` | Configuration zizmor du dépôt appelant, ignorée si absente |
+| `actionlint-version` | string | `1.7.7` | Version d'actionlint installée |
+
+Une configuration `zizmor.yml` à la racine permet d'assouplir la politique
+d'épinglage. Celle de ce dépôt accepte les tags pour `actions/*` et `Extern-SN/*`,
+et exige un SHA pour toute action tierce :
+
+```yaml
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        "actions/*": ref-pin
+        "Extern-SN/*": ref-pin
+        "*": hash-pin
+```
 
 ---
 

@@ -90,7 +90,9 @@ jobs:
       #   fix / hotfix / chore → bump patch (1.0.X)
       #   breaking → bump majeur (X.0.0)
       - name: Validate labels
-        uses: mheap/github-action-required-labels@v5
+        # Épinglé par SHA (v5.6.0) : un tag mobile peut être redirigé vers du code
+        # hostile, qui s'exécuterait ici avec le jeton du dépôt appelant.
+        uses: mheap/github-action-required-labels@23e10fde7e062233401931a0eece796cd9bf3177 # v5.6.0
         with:
           mode: exactly
           count: 1
