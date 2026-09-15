@@ -70,6 +70,37 @@ sur une offre non éligible, ce volet reste donc manuel.
 quelle version tourne, `registre-references.sh` est le seul recours, et il suppose
 un accès au cluster. Déclarer le tag dans les manifestes reste la vraie réponse.
 
+## Ce qu'une purge de tags ne règle pas
+
+Relevé sur `ndiasexternit/wordpress-direxi` après un passage complet de ces
+scripts, 17 tags ramenés à 7 :
+
+| Mesure | Valeur |
+|---|---|
+| somme brute des 7 tags restants | 3,6 Go, couches largement partagées |
+| `storage_size` réel du dépôt | **62,41 Go** |
+
+**Environ 95% du volume est dans des manifestes sans tag.** Une purge de tags est
+donc un travail d'hygiène et de lisibilité, pas une opération de stockage. Le
+mesurer avant de s'y lancer évite de chercher des gigaoctets là où il n'y en a pas :
+`registre-inventaire.sh` affiche `storage_size` en premier pour cette raison.
+
+L'origine est structurelle. Un pointeur mutable comme `dev` désigne une nouvelle
+image à chaque build et abandonne la précédente, qui perd son seul nom. Soixante
+builds font soixante orphelins.
+
+## Tags immuables
+
+`registre-inventaire.sh` rend aussi `immutable_tags_settings`. Activés, les tags
+immuables interdisent d'écraser un tag existant, ce qui est la garantie qui manque
+quand un déploiement affirme tourner sur `2.1.1` sans que rien ne prouve que le
+`2.1.1` d'aujourd'hui soit celui d'hier.
+
+> [!warning] Ne jamais activer la règle par défaut `.*`
+> Elle couvrirait `dev` et `latest`, mutables par conception, et casserait le
+> pipeline au premier build. La règle utile ne vise que les versions :
+> `^[0-9]+\.[0-9]+\.[0-9]+$`.
+
 ## Authentification
 
 Les trois scripts reprennent l'identifiant déposé par `docker login`
