@@ -29,13 +29,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Le cache pip est géré nativement par setup-python : il est invalidé quand
       # le fichier de dépendances (cache-dependency-path) change. Le glob doit
       # matcher au moins un fichier du dépôt, sinon le step échoue.
       - name: Setup Python ${{ inputs.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ inputs.python-version }}
           cache: 'pip'
