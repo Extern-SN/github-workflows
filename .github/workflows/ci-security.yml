@@ -11,6 +11,13 @@ name: CI Security
 # YAML de .github/workflows. C'est pourtant là que se logent les injections de
 # script, qui s'exécutent dans le runner avec le jeton du dépôt.
 #
+# Les deux outils tournent toujours, puis un verdict final rassemble leurs
+# résultats. Avant le 2026-09-15 ils s'enchaînaient sans filet : le moindre
+# constat d'actionlint arrêtait le job, et zizmor n'était jamais atteint. Or
+# c'est zizmor qui trouve les injections de template et les déclencheurs
+# dangereux. L'outil qui porte le vrai risque était donc muet dès que l'autre
+# avait une remarque de style.
+#
 # Le dépôt appelant garde le déclencheur, un workflow réutilisable ne pouvant
 # pas définir son propre "on". Appel type :
 #
@@ -44,6 +51,18 @@ on:
         description: 'Version d''actionlint à installer'
         type: string
         default: '1.7.7'
+      shellcheck-min-severity:
+        description: >
+          Sévérité shellcheck à partir de laquelle un constat est remonté par
+          actionlint : style, info, warning ou error. Le défaut "warning" écarte
+          les constats de style et d'information, qui sont souvent faux sur les
+          blocs "run" : shellcheck y analyse comme du shell des scripts php, awk
+          ou python passés en ligne de commande, et signale leurs variables
+          comme des expansions manquantes. Les erreurs propres à actionlint
+          (syntaxe, expressions, actions inexistantes) ne sont pas concernées et
+          font toujours échouer l'audit.
+        type: string
+        default: 'warning'
 
 permissions:
   contents: read
@@ -73,8 +92,14 @@ jobs:
           sudo mv actionlint /usr/local/bin/
           actionlint --version
 
+      # continue-on-error sur les deux outils : ils doivent tourner tous les deux,
+      # quel que soit le résultat de l'autre. Le verdict est rendu à la fin.
       - name: Run actionlint
-        run: actionlint -color
+        id: actionlint
+        continue-on-error: true
+        env:
+          SHELLCHECK_SEVERITY: ${{ inputs.shellcheck-min-severity }}
+        run: actionlint -color -shellcheck "shellcheck -S $SHELLCHECK_SEVERITY"
 
       - name: Install zizmor
         run: |
@@ -82,6 +107,8 @@ jobs:
           zizmor --version
 
       - name: Run zizmor
+        id: zizmor
+        continue-on-error: true
         env:
           SEVERITY: ${{ inputs.min-severity }}
           CONFIG: ${{ inputs.zizmor-config }}
@@ -94,3 +121,26 @@ jobs:
             echo "Aucune configuration zizmor, politique par défaut (SHA exigé partout)"
           fi
           zizmor "${args[@]}" .github/workflows/
+
+      # Verdict unique, après les deux outils. Les résultats passent par env :
+      # une interpolation directe dans un bloc "run" est le motif d'injection de
+      # template que ce workflow a précisément pour rôle de détecter ailleurs.
+      - name: Verdict
+        if: always()
+        env:
+          ACTIONLINT: ${{ steps.actionlint.outcome }}
+          ZIZMOR: ${{ steps.zizmor.outcome }}
+        run: |
+          echo "actionlint : $ACTIONLINT"
+          echo "zizmor     : $ZIZMOR"
+
+          rc=0
+          if [ "$ACTIONLINT" != "success" ]; then
+            echo "::error title=actionlint::Constats relevés, voir l'étape Run actionlint."
+            rc=1
+          fi
+          if [ "$ZIZMOR" != "success" ]; then
+            echo "::error title=zizmor::Constats relevés, voir l'étape Run zizmor."
+            rc=1
+          fi
+          exit "$rc"
