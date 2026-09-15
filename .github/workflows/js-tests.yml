@@ -48,36 +48,58 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: ${{ inputs.install-command }}
+        env:
+          # La commande passe par l'environnement plutot que par interpolation.
+          # Elle reste executee telle quelle, c'est sa raison d'etre : cette entree
+          # n'est ecrite que dans un fichier commite du depot appelant, donc son
+          # exploitation suppose deja un acces en ecriture. Ce que env: ferme, c'est
+          # la sortie du contexte de citation lors du developpement de l'expression.
+          INSTALL_COMMAND: ${{ inputs.install-command }}
+        run: bash -c "$INSTALL_COMMAND"
 
       - name: Run tests
-        run: ${{ inputs.test-command }}
+        env:
+          # La commande passe par l'environnement plutot que par interpolation.
+          # Elle reste executee telle quelle, c'est sa raison d'etre : cette entree
+          # n'est ecrite que dans un fichier commite du depot appelant, donc son
+          # exploitation suppose deja un acces en ecriture. Ce que env: ferme, c'est
+          # la sortie du contexte de citation lors du developpement de l'expression.
+          TEST_COMMAND: ${{ inputs.test-command }}
+        run: bash -c "$TEST_COMMAND"
 
       - name: Generate coverage badge
         if: inputs.coverage-type == 'badge' && github.event_name == 'push' && github.ref == format('refs/heads/{0}', inputs.badge-branch)
+        env:
+          # Chemins passes par l'environnement plutot que par interpolation :
+          # une expression developpee dans le texte du script peut en sortir et
+          # executer autre chose que ce qu'elle designe.
+          COVERAGE_SUMMARY_PATH: ${{ inputs.coverage-summary-path }}
+          BADGE_OUTPUT: ${{ inputs.badge-output }}
         run: |
           node -e '
           const fs = require("fs");
-          const summary = JSON.parse(fs.readFileSync("${{ inputs.coverage-summary-path }}", "utf8"));
+          const summary = JSON.parse(fs.readFileSync(process.env.COVERAGE_SUMMARY_PATH, "utf8"));
           const pct     = Number(summary.total.lines.pct || 0).toFixed(2);
           const numeric = Number(pct);
           const color   = numeric >= 90 ? "brightgreen" : (numeric >= 80 ? "green" : (numeric >= 70 ? "yellow" : (numeric >= 60 ? "orange" : "red")));
           fs.mkdirSync("badges", { recursive: true });
-          require("child_process").execSync(
-            `curl -sSL "https://img.shields.io/badge/js%20coverage-${encodeURIComponent(pct + "%")}-${color}.svg" -o "${{ inputs.badge-output }}"`
-          );
+          const url = "https://img.shields.io/badge/js%20coverage-" + encodeURIComponent(pct + "%") + "-" + color + ".svg";
+          // execFileSync et non execSync : aucun shell nest lance, les
+          // metacaracteres du chemin de sortie ne peuvent donc pas etre
+          // interpretes comme des commandes.
+          require("child_process").execFileSync("curl", ["-sSL", url, "-o", process.env.BADGE_OUTPUT]);
           '
 
       - name: Commit coverage badge
         if: inputs.coverage-type == 'badge' && github.event_name == 'push' && github.ref == format('refs/heads/{0}', inputs.badge-branch)
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@b863ae1933cb653a53c021fe36dbb774e1fb9403  # v5.2.0
         with:
           commit_message: 'Update JS coverage badge'
           file_pattern: ${{ inputs.badge-output }}
 
       - name: Upload to Codecov
         if: inputs.coverage-type == 'codecov'
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac  # v5.5.5
         with:
           flags: unittests
           fail_ci_if_error: true
