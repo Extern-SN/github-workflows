@@ -15,6 +15,7 @@ Workflows GitHub Actions réutilisables pour tous les services Extern SN.
 | `validate-pr.yml` | Contrôle du nommage de branche et du label de release |
 | `auto-label.yml` | Pose du label de release depuis le préfixe de branche |
 | `ci-security.yml` | Audit des workflows GitHub Actions (actionlint + zizmor) |
+| `debt-report.yml` | Rapport récurrent de dette technique pour les stacks LEGACY ou EOL |
 
 ---
 
@@ -233,6 +234,72 @@ jobs:
 à la main.
 
 ---
+
+## debt-report.yml
+
+```yaml
+on:
+  schedule:
+    - cron: '0 8 1 * *'   # le 1er de chaque mois, 08:00 UTC
+  workflow_dispatch:
+
+jobs:
+  dette:
+    permissions:
+      issues: write
+    uses: Extern-SN/github-workflows/.github/workflows/debt-report.yml@v1
+    with:
+      stack: PHP 7.2-apache
+      motif: >
+        Debian buster est EOL, ses dépôts APT sont servis depuis l'archive.
+        Le scan Trivy est désactivé dans docker-build.yml, il échouerait
+        quasi systématiquement sur cette base.
+      echeance: Montée en PHP 8.3 à planifier, non arbitrée à ce jour.
+```
+
+Le SDU rend ce workflow **obligatoire dès qu'une stack est LEGACY ou EOL**. La
+logique du référentiel mérite d'être comprise avant d'être appliquée : un projet
+EOL n'est pas pénalisé parce qu'il est vieux, il l'est parce qu'il est vieux
+**sans être traité comme tel**. Le traitement attendu tient en deux choses,
+l'image applicative gelée sur un tag `legacy-frozen-<version>`, et la dette
+suivie par ce rapport. Sans elles, la note du projet est plafonnée au grade C
+quel que soit le reste de la chaîne.
+
+Le workflow crée une issue de suivi, puis la met à jour à chaque exécution en y
+ajoutant un rappel numéroté. **C'est le compteur qui fait la valeur du ticket** :
+une issue portant 14 rappels dit en un coup d'oeil que la dette a 14 mois, ce
+qu'aucun ticket ouvert une seule fois ne dira jamais.
+
+Le job ne fait **aucun checkout** : il ne lit pas le dépôt, il n'écrit qu'une
+issue. Ne pas cloner évite de laisser un jeton dans le répertoire de travail.
+
+**Inputs**
+
+| Nom | Type | Défaut | Description |
+|-----|------|--------|-------------|
+| `stack` | string | — | Stack concernée, nommée comme au référentiel SDU |
+| `statut` | string | `EOL` | Statut SDU de la stack : `EOL` ou `LEGACY` |
+| `motif` | string | `` | Ce qui bloque ou ce que la situation impose |
+| `echeance` | string | `` | Échéance de sortie de dette, si elle est arbitrée |
+| `label` | string | `dette-technique` | Label posé sur l'issue, créé s'il manque. Vide pour aucun label |
+| `titre` | string | `` | Titre de l'issue. Par défaut construit depuis la stack |
+
+Laisser `echeance` vide n'est pas un oubli, c'est une information : le ticket
+écrit alors noir sur blanc qu'aucune échéance n'est arbitrée.
+
+Le titre est la **clé de rapprochement** entre deux exécutions. Le changer après
+coup fait repartir le compteur de rappels à zéro et perd l'historique de la
+dette.
+
+**Dependabot et les stacks EOL**
+
+Sur un dépôt en stack EOL, ne pas activer les écosystèmes `composer` et `docker`
+de Dependabot : le premier proposera des paquets exigeant un runtime plus récent,
+le second proposera de sortir de l'image gelée, ce qui **contredit le traitement
+EOL**. Seul l'écosystème `github-actions` est utilisable tel quel, et il suffit à
+satisfaire le contrôle OpenSSF `Dependency-Update-Tool`, qui est un contrôle de
+présence.
+
 
 ## ci-security.yml
 
