@@ -124,9 +124,13 @@ jobs:
             exit 1
           fi
 
-          echo "labels<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$LABELS" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          # Redirections groupées : shellcheck SC2129 sur trois ">>" consécutifs
+          # vers le même fichier. Constat préexistant, corrigé au passage.
+          {
+            echo "labels<<EOF"
+            echo "$LABELS"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       # Calcule le prochain tag en fonction du dernier tag existant et du label de la PR.
       # Si aucun tag n'existe encore, le premier tag est toujours v1.0.0 : le label ne
