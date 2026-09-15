@@ -125,7 +125,7 @@ jobs:
 
       - name: Cache Trivy DB
         if: inputs.with-trivy
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/trivy
           key: trivy-db-${{ steps.trivy-date.outputs.date }}
