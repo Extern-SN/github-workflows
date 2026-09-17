@@ -155,7 +155,7 @@ jobs:
           # fichier voit son scan CVE rougir sans qu'aucune CVE ait ete cherchee :
           # le controle qui justifie ce job ne tourne jamais, et l'echec ressemble
           # a une trouvaille. Le fichier n'est donc passe que s'il existe.
-          trivyignores: ${{ hashFiles(inputs.trivy-ignore-file) != '' && inputs.trivy-ignore-file || '' }}
+          trivyignores: ${{ inputs.trivy-ignore-file != '' && hashFiles(inputs.trivy-ignore-file) != '' && inputs.trivy-ignore-file || '' }}
           cache-dir: ~/.cache/trivy
           # Ce job ne veut que le scan CVE (with-trivy) : sans ce réglage, Trivy scanne
           # aussi secrets et mauvaises configurations par défaut, plus lent et hors
