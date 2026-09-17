@@ -32,6 +32,14 @@ on:
       trivy-ignore-file:
         type: string
         default: '.trivyignore'
+      free-disk-space:
+        description: >
+          Libere l'espace disque du runner avant le build. A activer pour une
+          image volumineuse : Trivy exporte l'image entiere dans /tmp pour
+          l'analyser, et un runner GitHub n'a qu'une quinzaine de gigaoctets
+          libres. Coute environ une minute, donc desactive par defaut.
+        type: boolean
+        default: false
       smoke-test-script:
         description: 'Path to smoke test script in the repo (skipped if file absent)'
         type: string
@@ -61,6 +69,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      # Trivy exporte l'image entiere dans /tmp avant de l'analyser. Sur une
+      # image volumineuse, le scan echoue sur "no space left on device" apres
+      # plusieurs minutes, et l'echec ne ressemble en rien a un probleme de
+      # place : il se presente comme "failed to analyze layer".
+      # Constate le 2026-09-17 sur ExternIT-repo/arbs-odoo, image Odoo 18.
+      - name: Free disk space
+        if: inputs.free-disk-space
+        run: |
+          echo "Avant :"; df -h / | tail -1
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          sudo docker image prune -af || true
+          echo "Apres :"; df -h / | tail -1
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003  # v4.4.0
@@ -149,7 +171,13 @@ jobs:
           exit-code: '1'
           severity: CRITICAL,HIGH
           ignore-unfixed: true
-          trivyignores: ${{ inputs.trivy-ignore-file }}
+          # trivy-action echoue ("cannot find ignorefile") quand le fichier passe
+          # ici n'existe pas, AVANT d'avoir scanne quoi que ce soit. Le defaut de
+          # l'entree etant .trivyignore, tout depot qui adopte la chaine sans ce
+          # fichier voit son scan CVE rougir sans qu'aucune CVE ait ete cherchee :
+          # le controle qui justifie ce job ne tourne jamais, et l'echec ressemble
+          # a une trouvaille. Le fichier n'est donc passe que s'il existe.
+          trivyignores: ${{ inputs.trivy-ignore-file != '' && hashFiles(inputs.trivy-ignore-file) != '' && inputs.trivy-ignore-file || '' }}
           cache-dir: ~/.cache/trivy
           # Ce job ne veut que le scan CVE (with-trivy) : sans ce réglage, Trivy scanne
           # aussi secrets et mauvaises configurations par défaut, plus lent et hors
