@@ -31,7 +31,10 @@ on:
   workflow_call:
     inputs:
       docker-workflow-file:
-        description: 'Fichier du workflow à déclencher via workflow_dispatch après la création du tag'
+        description: >
+          Fichier du workflow à déclencher via workflow_dispatch après la création
+          du tag. Chaîne vide : aucun build n'est déclenché, pour un dépôt qui ne
+          construit pas d'image.
         type: string
         default: 'docker-build.yml'
       changelog-file:
@@ -246,7 +249,19 @@ jobs:
       # Un tag poussé avec le GITHUB_TOKEN par défaut ne déclenche pas les workflows
       # écoutant "on.push.tags" (limitation GitHub Actions anti-boucle infinie).
       # On déclenche donc explicitement le workflow de build via l'API workflow_dispatch.
+      #
+      # Tous les dépôts du Groupe ne construisent pas d'image : un module Odoo
+      # déployé sur Odoo.sh, un dépôt de documentation ou une bibliothèque n'ont
+      # pas de docker-build.yml. Chez eux, cette étape échouait sur un
+      # "workflow not found" APRÈS la création du tag et de la release, laissant
+      # un run rouge pour une image qui n'avait pas lieu d'être construite, et
+      # empêchant le report de la promotion du changelog qui la suit.
+      #
+      # Passer docker-workflow-file: '' déclare l'absence de build et saute
+      # l'étape. La valeur par défaut reste docker-build.yml : aucun appelant
+      # existant ne change de comportement.
       - name: Trigger Docker build
+        if: inputs.docker-workflow-file != ''
         env:
           GH_TOKEN: ${{ github.token }}
           WORKFLOW_FILE: ${{ inputs.docker-workflow-file }}

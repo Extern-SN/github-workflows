@@ -184,7 +184,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `docker-workflow-file` | string | `docker-build.yml` | Workflow déclenché en `workflow_dispatch` après la création du tag |
+| `docker-workflow-file` | string | `docker-build.yml` | Workflow déclenché en `workflow_dispatch` après la création du tag. **Chaîne vide pour un dépôt qui ne construit pas d'image** : l'étape est sautée au lieu d'échouer sur un workflow absent |
 | `changelog-file` | string | `` | Changelog Keep a Changelog. Sa section `## [Non publié]` est promue en version datée avant le tag. Vide pour désactiver |
 | `create-release` | boolean | `false` | Publie une GitHub Release, corps repris de la section promue |
 
