@@ -149,7 +149,13 @@ jobs:
           exit-code: '1'
           severity: CRITICAL,HIGH
           ignore-unfixed: true
-          trivyignores: ${{ inputs.trivy-ignore-file }}
+          # trivy-action echoue ("cannot find ignorefile") quand le fichier passe
+          # ici n'existe pas, AVANT d'avoir scanne quoi que ce soit. Le defaut de
+          # l'entree etant .trivyignore, tout depot qui adopte la chaine sans ce
+          # fichier voit son scan CVE rougir sans qu'aucune CVE ait ete cherchee :
+          # le controle qui justifie ce job ne tourne jamais, et l'echec ressemble
+          # a une trouvaille. Le fichier n'est donc passe que s'il existe.
+          trivyignores: ${{ hashFiles(inputs.trivy-ignore-file) != '' && inputs.trivy-ignore-file || '' }}
           cache-dir: ~/.cache/trivy
           # Ce job ne veut que le scan CVE (with-trivy) : sans ce réglage, Trivy scanne
           # aussi secrets et mauvaises configurations par défaut, plus lent et hors
