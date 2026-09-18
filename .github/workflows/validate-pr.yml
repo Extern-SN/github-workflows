@@ -12,6 +12,9 @@ name: Validate PR
 #       branches: [dev, main]
 #       types: [opened, edited, synchronize, labeled, unlabeled]
 #
+# Le job attend au plus 60 s qu'un label de version apparaisse avant de trancher,
+# parce qu'auto-label.yml court en parallèle dans un workflow distinct.
+#
 #   jobs:
 #     validate:
 #       uses: Extern-SN/github-workflows/.github/workflows/validate-pr.yml@v1
@@ -83,6 +86,48 @@ jobs:
           fi
 
           echo "Nommage conforme."
+
+      # auto-label.yml tourne dans un workflow distinct, déclenché par le même
+      # événement : les deux courent en parallèle et rien ne garantit l'ordre. Le
+      # label peut donc arriver après ce contrôle, qui échoue alors sur une PR
+      # parfaitement conforme. Le type "labeled" ne rattrape pas le coup : le
+      # label est posé avec GITHUB_TOKEN, et un événement émis avec ce jeton ne
+      # déclenche aucun workflow. Un rouge injustifié apprend à ignorer ce
+      # contrôle, et c'est ainsi qu'une PR réellement sans label passe.
+      #
+      # On attend donc brièvement, et seulement tant qu'aucun label n'est là.
+      # Cette étape ne tranche rien : elle ne fait jamais échouer le job.
+      - name: Attend la pose du label de release
+        uses: actions/github-script@v9
+        env:
+          LABELS: ${{ inputs.labels }}
+        with:
+          script: |
+            const attendus = process.env.LABELS
+              .split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+
+            const lire = async () => {
+              const poses = await github.paginate(github.rest.issues.listLabelsOnIssue, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                per_page: 100,
+              });
+              return poses.map(l => l.name).filter(n => attendus.includes(n));
+            };
+
+            const essais = 12;      // 12 x 5 s = 60 s au plus
+            for (let i = 1; i <= essais; i++) {
+              const trouves = await lire();
+              if (trouves.length > 0) {
+                console.log(`Label de version présent (${trouves.join(', ')}) après ${(i - 1) * 5} s.`);
+                return;
+              }
+              if (i < essais) await new Promise(r => setTimeout(r, 5000));
+            }
+            console.log(
+              `Aucun label de version après ${essais * 5} s. Le contrôle suivant tranchera.`
+            );
 
       # Vérifie qu'exactement 1 label de release est posé sur la PR.
       # Ce label détermine quel chiffre de la version sera incrémenté au merge :

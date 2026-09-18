@@ -216,6 +216,13 @@ jobs:
 | `branch-pattern` | string | `^(feature\|fix\|hotfix)/.+$` | Motif que doit respecter la branche source |
 | `labels` | string | les 5 labels du Groupe | Labels de release acceptés, un par ligne |
 
+Le job attend au plus 60 secondes qu'un label de version apparaisse avant de
+trancher. `auto-label.yml` court en parallèle dans un workflow distinct, déclenché
+par le même événement, et rien ne garantit l'ordre : sans cette attente, le
+contrôle échoue sur une PR parfaitement conforme dont le label arrive une seconde
+trop tard. Le type `labeled` ne rattrape pas le coup, un événement émis avec
+`GITHUB_TOKEN` ne déclenchant aucun workflow.
+
 ---
 
 ## auto-label.yml
