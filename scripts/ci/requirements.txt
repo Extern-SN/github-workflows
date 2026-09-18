@@ -1,0 +1,7 @@
+# Dépendance du contrôle de contrat, épinglée par hash comme les actions le sont
+# par SHA : une version de PyYAML substituée en amont s'exécuterait dans le
+# runner qui audite la chaîne de tout le parc.
+#
+# Hash de la roue cp312 manylinux x86_64, la seule que le runner ubuntu-22.04
+# installe. Changer de version de Python impose de relever le hash correspondant.
+PyYAML==6.0.2 --hash=sha256:80bab7bfc629882493af4aa31a4cfa43a4c57c83813253626916b8c7ada83476

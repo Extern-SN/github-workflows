@@ -51,6 +51,14 @@ on:
           promue du changelog, ou les notes générées par GitHub à défaut.
         type: boolean
         default: false
+      major-alias:
+        description: >
+          Repositionne le tag majeur mobile (v1 pour v1.4.2) sur la version qui
+          vient d'être publiée. À n'activer que sur un dépôt dont les
+          consommateurs appellent ce tag mobile : le déplacement les met à jour
+          immédiatement, sans revue de leur côté.
+        type: boolean
+        default: false
       sync-branch:
         description: >
           Branche de développement vers laquelle reporter le commit de promotion
@@ -80,6 +88,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0  # nécessaire pour accéder à l'historique complet des tags
+          persist-credentials: true  # le job pousse le changelog, le tag et l'alias majeur
 
       - name: Configure Git
         run: |
@@ -267,6 +276,36 @@ jobs:
           WORKFLOW_FILE: ${{ inputs.docker-workflow-file }}
         run: |
           gh workflow run "$WORKFLOW_FILE" --ref "$NEXT_TAG"
+
+      # Le tag majeur mobile (v1 pour v1.4.2) est la référence qu'appellent les
+      # dépôts consommateurs. Tant que son déplacement reste une manœuvre
+      # manuelle, il finit par ne pas être faite : le 2026-09-18, le v1 de ce
+      # dépôt pointait six commits en arrière, et les correctifs publiés la
+      # veille n'atteignaient aucun dépôt du parc.
+      #
+      # L'alias ne recule jamais : s'il existe une version plus récente dans la
+      # même série majeure, la publication en cours est un correctif de
+      # maintenance sur une version ancienne, et déplacer l'alias dessus
+      # rétrograderait tous les consommateurs.
+      #
+      # Comme le back-merge, cette étape vient après le tag et la release : son
+      # échec laisse une publication valide, pas une release à moitié faite.
+      - name: Déplace le tag majeur mobile
+        if: inputs.major-alias
+        run: |
+          MAJEUR="${NEXT_TAG%%.*}"
+
+          git fetch --tags --force origin
+          PLUS_RECENT=$(git tag --list "${MAJEUR}.*" --sort=-v:refname | head -n 1)
+
+          if [ "$PLUS_RECENT" != "$NEXT_TAG" ]; then
+            echo "::warning title=Alias majeur inchangé::$NEXT_TAG n'est pas la version la plus récente de la série $MAJEUR ($PLUS_RECENT). L'alias $MAJEUR n'est pas déplacé."
+            exit 0
+          fi
+
+          git tag --force "$MAJEUR" "$NEXT_TAG"
+          git push --force origin "$MAJEUR"
+          echo "$MAJEUR pointe désormais sur $NEXT_TAG"
 
       # Reporte le commit de promotion vers la branche de développement. Sans ce
       # report, celle-ci conserve en section "Non publié" des entrées déjà

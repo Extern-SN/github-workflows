@@ -1,0 +1,45 @@
+name: Release (self)
+
+# Ce dépôt publie ses versions avec son propre workflow de release.
+#
+# Trois réglages propres au socle :
+#
+#   docker-workflow-file: ''  il ne construit aucune image. C'est précisément le
+#                             cas que #20 a corrigé, après qu'il eut cassé des
+#                             releases chez les consommateurs sans build ;
+#   major-alias: true         ses consommateurs appellent le tag mobile "v1", qui
+#                             doit suivre la version publiée. Laissé à la main,
+#                             ce déplacement a manqué pendant tout le parc ;
+#   create-release: true      la version publiée doit être lisible hors du dépôt,
+#                             le changelog servant de corps à la release.
+#
+# Le changelog est exclu du déclencheur : le workflow y pousse lui-même le
+# commit de promotion, qui relancerait sinon un run sans PR mergée associée.
+
+# Appel en "./" et non en "$/" : la syntaxe "$/" est celle que recommande
+# zizmor et que documente GitHub, mais actionlint 1.7.7, l'autre moitié de notre
+# propre ci-security, la rejette comme invalide, et elle n'existe pas sur GitHub
+# Enterprise Server. Les deux outils de la chaîne se contredisent : on garde la
+# forme portable, acceptée par les deux, et on écarte le constat zizmor ici.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['CHANGELOG.md']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Tag SemVer et release
+    permissions:
+      contents: write       # tag, commit de changelog et alias majeur
+      pull-requests: read   # label de la PR mergée
+      actions: write        # requis par le workflow appelé, inutilisé ici
+    uses: ./.github/workflows/release-tag.yml  # zizmor: ignore[self-repository]
+    with:
+      changelog-file: CHANGELOG.md
+      create-release: true
+      docker-workflow-file: ''
+      major-alias: true

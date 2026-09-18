@@ -1,0 +1,12 @@
+# Secrets et configuration locale
+.env
+.env.*
+!.env.example
+
+# Sorties des scripts d'entretien du registre
+*.log
+/tmp/
+
+# Artefacts d'éditeur et de système
+.DS_Store
+*.swp
