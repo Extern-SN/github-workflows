@@ -15,6 +15,30 @@ au 2026-09-14.
 
 ## [Non publié]
 
+## [v1.6.0] - 2026-09-18
+
+### Ajouté
+
+- `validate-pr.yml` : entrée `changelog-file`. Quand elle est renseignée, la PR doit
+  porter elle-même la section de la version que son merge publiera, et le contrôle
+  dit quel numéro écrire si elle manque. Transmise par
+  `validate-pr-labelled.yml`.
+
+### Modifié
+
+- `release-tag.yml` ne promeut plus rien quand le changelog porte déjà la section de
+  la version : il lit son corps pour les notes de release, sans commit ni push. La
+  publication cesse alors de dépendre d'un droit d'écriture sur la branche par
+  défaut, que toute branche protégée refuse.
+
+  C'est la sortie du défaut qui a coûté quatre publications manuelles le
+  2026-09-18, chacune passant par une PR de deux lignes. Les dépôts qui laissent
+  leur section « Non publié » gardent le comportement d'origine : le mode n'est pas
+  déclaré, il est déduit du fichier.
+
+  Cette version est la première à se publier par ce chemin : la section que vous
+  lisez a été écrite dans la PR qui l'apporte.
+
 ## [v1.5.0] - 2026-09-18
 
 ### Ajouté

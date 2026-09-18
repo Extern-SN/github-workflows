@@ -31,3 +31,8 @@ jobs:
       # Ce dépôt n'a pas de branche d'intégration : la règle de nommage
       # s'applique à toutes ses PR, pas seulement à celles vers "dev".
       enforce-naming-on-base: '*'
+      # Chaque PR écrit la section de la version que son merge publiera. C'est ce
+      # qui dispense release-tag.yml de pousser quoi que ce soit sur main, et donc
+      # ce qui met fin aux promotions manuelles imposées par la protection de
+      # branche : quatre le 2026-09-18, pour deux lignes chacune.
+      changelog-file: CHANGELOG.md
