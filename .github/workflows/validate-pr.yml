@@ -15,6 +15,20 @@ name: Validate PR
 #   jobs:
 #     validate:
 #       uses: Extern-SN/github-workflows/.github/workflows/validate-pr.yml@v1
+#
+# Avec "auto-label: true", ce workflow pose lui-même le label avant de contrôler,
+# dans un job dont le contrôle dépend. L'ordre devient déterministe au lieu d'être
+# une course entre deux workflows déclenchés par le même événement. Le dépôt
+# appelant retire alors son auto-label.yml et accorde "pull-requests: write" :
+#
+#   jobs:
+#     validate:
+#       permissions:
+#         contents: read
+#         pull-requests: write
+#       uses: Extern-SN/github-workflows/.github/workflows/validate-pr.yml@v1
+#       with:
+#         auto-label: true
 
 on:
   workflow_call:
@@ -48,14 +62,63 @@ on:
           hotfix
           chore
           breaking
+      auto-label:
+        description: >
+          Pose le label de release avant de le contrôler, en appelant
+          auto-label.yml dans un job dont le contrôle dépend. Exige
+          "pull-requests: write" sur le job appelant : un workflow appelé
+          n'obtient jamais plus de droits que ce que son appelant lui accorde.
+          Le dépôt appelant retire alors son auto-label.yml.
+        type: boolean
+        default: false
+      prefix-map:
+        description: >
+          Transmis à auto-label.yml. Sans effet si "auto-label" vaut false.
+          Le défaut doit rester identique à celui d'auto-label.yml.
+        type: string
+        default: '{"feature/": "feature", "fix/": "fix", "hotfix/": "hotfix"}'
+      integration-branch:
+        description: >
+          Transmis à auto-label.yml. Sans effet si "auto-label" vaut false.
+        type: string
+        default: 'dev'
+      label-ranking:
+        description: >
+          Transmis à auto-label.yml. Sans effet si "auto-label" vaut false.
+        type: string
+        default: '["breaking", "feature", "fix", "hotfix", "chore"]'
 
 permissions:
   contents: read
 
 jobs:
+  # Pose du label avant le contrôle. Sans ce job, auto-label.yml tourne dans un
+  # workflow distinct déclenché par le même événement : les deux courent en
+  # parallèle et rien ne garantit l'ordre, si bien que le contrôle échoue sur des
+  # PR parfaitement conformes dont le label arrive une seconde trop tard. Le type
+  # "labeled" ne rattrape pas le coup, un événement émis avec GITHUB_TOKEN ne
+  # déclenchant aucun workflow. Ce faux rouge apprend à ignorer le contrôle, et
+  # c'est ainsi qu'une PR réellement sans label finit par passer.
+  label:
+    name: Pose du label de release
+    if: inputs.auto-label
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: ./.github/workflows/auto-label.yml
+    with:
+      prefix-map: ${{ inputs.prefix-map }}
+      integration-branch: ${{ inputs.integration-branch }}
+      label-ranking: ${{ inputs.label-ranking }}
+
   validate:
     name: Conventions de PR
     runs-on: ubuntu-22.04
+    needs: [label]
+    # Le job de pose est sauté quand "auto-label" vaut false, et peut échouer.
+    # Ni l'un ni l'autre ne doit dispenser du contrôle : il doit alors échouer
+    # sur le label manquant, pas être annulé.
+    if: always()
     permissions:
       contents: read
       pull-requests: read  # lecture des labels de la PR
