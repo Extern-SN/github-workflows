@@ -290,7 +290,16 @@ jobs:
 |-----|------|--------|-------------|
 | `enforce-naming-on-base` | string | `dev` | Branche de base sur laquelle la règle de nommage s'applique. `*` pour toutes |
 | `branch-pattern` | string | `^(feature\|fix\|hotfix)/.+$` | Motif que doit respecter la branche source |
+| `enforce-naming-on-bots` | boolean | `false` | Applique aussi la règle de nommage aux PR d'automates |
 | `labels` | string | les 5 labels du Groupe | Labels de release acceptés, un par ligne |
+
+> **Les PR d'automates échappent à la règle de nommage.** Dependabot et Renovate
+> nomment leurs branches eux-mêmes (`dependabot/github_actions/...`) et ne se
+> configurent pas sur ce point. Comme le kit SDU pose `dependabot.yml` en même
+> temps que ce contrôle, toute PR de mise à jour partait rouge pour un nom que
+> personne ne peut changer. Le **label de release reste exigé** : le poser revient
+> à la configuration de l'automate, par exemple `labels: ["chore"]` dans
+> `dependabot.yml`, `auto-label.yml` ne sachant rien déduire de ces noms de branche.
 
 ---
 
