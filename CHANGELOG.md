@@ -15,6 +15,15 @@ au 2026-09-14.
 
 ## [Non publié]
 
+### Corrigé
+
+- `validate-pr.yml` : les PR d'automates échappent à la règle de nommage de
+  branche, par la nouvelle entrée `enforce-naming-on-bots` (défaut `false`).
+  Dependabot nomme ses branches `dependabot/github_actions/...` et ne se
+  configure pas sur ce point ; le kit SDU posant `dependabot.yml` en même temps
+  que ce contrôle, toute PR de mise à jour de dépendance partait rouge pour un
+  nom que personne ne peut changer. Le label de release reste exigé.
+
 ## [v1.3.0] - 2026-09-18
 
 ### Ajouté

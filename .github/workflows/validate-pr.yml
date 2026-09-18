@@ -30,6 +30,15 @@ on:
         description: 'Expression régulière que doit respecter la branche source'
         type: string
         default: '^(feature|fix|hotfix)/.+$'
+      enforce-naming-on-bots:
+        description: >
+          Applique la règle de nommage aux PR ouvertes par un automate
+          (Dependabot, Renovate). Ces outils nomment leurs branches eux-mêmes,
+          sans possibilité de configuration : "dependabot/github_actions/...".
+          La règle ne leur apprend donc rien, elle rend seulement rouge toute PR
+          de mise à jour de dépendance. Passer "true" pour l'exiger quand même.
+        type: boolean
+        default: false
       labels:
         description: 'Labels de release acceptés, un par ligne'
         type: string
@@ -61,15 +70,31 @@ jobs:
       # interpolés dans le texte du script : un nom de branche construit pour
       # cela ne peut pas s'exécuter dans le runner (injection de script,
       # OpenSSF Dangerous-Workflow).
+      #
+      # Les PR d'automates sont hors de cette règle par défaut : Dependabot et
+      # Renovate nomment leurs branches eux-mêmes et ne se configurent pas sur ce
+      # point. Comme le kit SDU pose "dependabot.yml" en même temps que ce
+      # contrôle, toute PR de mise à jour de dépendance partait rouge pour un
+      # nom que personne ne peut changer (constaté le 2026-09-18 sur les trois
+      # premières PR Dependabot du dépôt socle). Le type d'auteur vient de
+      # l'événement GitHub et ne peut pas être usurpé par un contributeur.
       - name: Validate branch naming
         env:
           BRANCH: ${{ github.head_ref }}
           BASE: ${{ github.base_ref }}
           ENFORCE_ON: ${{ inputs.enforce-naming-on-base }}
           PATTERN: ${{ inputs.branch-pattern }}
+          AUTEUR_BOT: ${{ github.event.pull_request.user.type == 'Bot' }}
+          ENFORCE_ON_BOTS: ${{ inputs.enforce-naming-on-bots }}
         run: |
           echo "Branch: $BRANCH"
           echo "Base: $BASE"
+
+          if [ "$AUTEUR_BOT" = "true" ] && [ "$ENFORCE_ON_BOTS" != "true" ]; then
+            echo "PR ouverte par un automate : règle de nommage non applicable."
+            echo "Le label de release reste exigé."
+            exit 0
+          fi
 
           if [ "$ENFORCE_ON" != "*" ] && [ "$BASE" != "$ENFORCE_ON" ]; then
             echo "Règle de nommage non applicable aux PR vers \"$BASE\"."
