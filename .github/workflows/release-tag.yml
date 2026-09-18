@@ -85,7 +85,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0  # nécessaire pour accéder à l'historique complet des tags
           persist-credentials: true  # le job pousse le changelog, le tag et l'alias majeur
