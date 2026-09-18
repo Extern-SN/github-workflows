@@ -215,13 +215,40 @@ jobs:
 | `enforce-naming-on-base` | string | `dev` | Branche de base sur laquelle la règle de nommage s'applique. `*` pour toutes |
 | `branch-pattern` | string | `^(feature\|fix\|hotfix)/.+$` | Motif que doit respecter la branche source |
 | `labels` | string | les 5 labels du Groupe | Labels de release acceptés, un par ligne |
+| `auto-label` | boolean | `false` | Pose le label avant de le contrôler, en appelant `auto-label.yml` dans un job dont le contrôle dépend |
+| `prefix-map` | string | idem `auto-label.yml` | Transmis à `auto-label.yml`, sans effet si `auto-label` vaut `false` |
+| `integration-branch` | string | `dev` | Transmis à `auto-label.yml`, sans effet si `auto-label` vaut `false` |
+| `label-ranking` | string | idem `auto-label.yml` | Transmis à `auto-label.yml`, sans effet si `auto-label` vaut `false` |
 
-Le job attend au plus 60 secondes qu'un label de version apparaisse avant de
-trancher. `auto-label.yml` court en parallèle dans un workflow distinct, déclenché
-par le même événement, et rien ne garantit l'ordre : sans cette attente, le
-contrôle échoue sur une PR parfaitement conforme dont le label arrive une seconde
-trop tard. Le type `labeled` ne rattrape pas le coup, un événement émis avec
-`GITHUB_TOKEN` ne déclenchant aucun workflow.
+### Pose du label et contrôle : un seul workflow
+
+Appelés séparément, `auto-label.yml` et `validate-pr.yml` sont déclenchés par le
+même événement et courent en parallèle : rien ne garantit que le label soit posé
+avant d'être contrôlé. Le contrôle échoue alors sur une PR parfaitement conforme.
+Le type `labeled` ne rattrape pas le coup, un événement émis avec `GITHUB_TOKEN`
+ne déclenchant aucun workflow. Ce faux rouge apprend à ignorer le contrôle, et
+c'est ainsi qu'une PR réellement sans label finit par passer.
+
+`auto-label: true` supprime la course : la pose devient un job dont le contrôle
+dépend. Le dépôt appelant retire alors son `auto-label.yml` et accorde
+`pull-requests: write`, un workflow appelé n'obtenant jamais plus de droits que
+ce que son appelant lui accorde.
+
+```yaml
+on:
+  pull_request:
+    branches: [dev, main]
+    types: [opened, edited, synchronize, labeled, unlabeled]
+
+jobs:
+  validate:
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: Extern-SN/github-workflows/.github/workflows/validate-pr.yml@v1
+    with:
+      auto-label: true
+```
 
 ---
 
