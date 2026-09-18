@@ -15,6 +15,8 @@ au 2026-09-14.
 
 ## [Non publié]
 
+## [v1.3.0] - 2026-09-18
+
 ### Ajouté
 
 - Le dépôt applique désormais à lui-même la chaîne qu'il fournit au parc :
