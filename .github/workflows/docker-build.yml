@@ -69,6 +69,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false  # aucun push : le jeton n'a rien à faire dans le checkout
 
       # Trivy exporte l'image entiere dans /tmp avant de l'analyser. Sur une
       # image volumineuse, le scan echoue sur "no space left on device" apres
@@ -145,9 +147,19 @@ jobs:
         id: trivy-date
         run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
 
+      # Le cache n'est utilisé que sur les runs qui ne publient pas. Une entrée
+      # de cache écrite depuis une branche de PR est lisible par les runs de la
+      # branche par défaut : un cache empoisonné ne peut pas entrer dans l'image
+      # (il ne porte que la base de vulnérabilités, jamais une couche), mais il
+      # pourrait faire verdir un scan sans que rien soit réellement contrôlé.
+      # Sur un run de publication, le scan fait foi : la base est retéléchargée.
+      #
+      # Le constat zizmor porte sur la présence d'un cache dans un workflow qui
+      # publie un artefact ; la condition ci-dessous sépare les deux cas, ce que
+      # l'analyse statique ne peut pas voir.
       - name: Cache Trivy DB
-        if: inputs.with-trivy
-        uses: actions/cache@v6
+        if: inputs.with-trivy && !inputs.push
+        uses: actions/cache@v6  # zizmor: ignore[cache-poisoning]
         with:
           path: ~/.cache/trivy
           key: trivy-db-${{ steps.trivy-date.outputs.date }}

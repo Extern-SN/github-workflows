@@ -40,6 +40,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          persist-credentials: true  # le badge de couverture est commité par git-auto-commit-action
 
       # pcov plutôt que xdebug : couverture de lignes suffisante pour les badges,
       # nettement plus rapide. Désactivé quand aucune couverture n'est demandée

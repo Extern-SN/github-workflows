@@ -1,0 +1,15 @@
+# Les workflows de ce dépôt épinglent leurs actions tierces par SHA (politique
+# zizmor "hash-pin"). Un SHA épinglé ne se met pas à jour tout seul : sans
+# Dependabot, l'épinglage fige aussi les correctifs de sécurité des actions.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "chore"
+    commit-message:
+      prefix: "chore(deps)"
