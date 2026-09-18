@@ -15,6 +15,25 @@ au 2026-09-14.
 
 ## [Non publié]
 
+### Ajouté
+
+- `validate-pr.yml` : entrée `auto-label`, qui pose le label de release avant de le
+  contrôler, dans un job dont le contrôle dépend. L'ordre devient déterministe au
+  lieu d'être une course entre deux workflows déclenchés par le même événement
+  (#22).
+
+### Corrigé
+
+- L'appel local ajouté par #22 faisait échouer `ci-security` sur le dépôt lui-même,
+  qui s'audite au seuil `low` : la dérogation motivée `self-repository` manquait.
+- Montée des actions officielles : `actions/checkout` 5 vers 7,
+  `actions/setup-python` 6 vers 7, `codecov/codecov-action` 5.5.5 vers 7.1.0
+  (#25, #24, #26). Ces trois majeures correspondent au passage à Node 24, déjà
+  engagé par #19.
+- Les cinq labels de release de la convention du Groupe n'existaient pas tous sur
+  ce dépôt : `chore`, `hotfix` et `breaking` manquaient, et `validate-pr` échouait
+  donc sur des PR par ailleurs conformes. Créés le 2026-09-18.
+
 ## [v1.3.1] - 2026-09-18
 
 ### Corrigé

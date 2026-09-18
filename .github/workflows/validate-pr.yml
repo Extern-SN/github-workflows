@@ -105,7 +105,12 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    uses: ./.github/workflows/auto-label.yml
+    # Appel en "./" et non en "$/" : zizmor recommande "$/" et GitHub la documente,
+    # mais actionlint 1.7.7, l'autre moitié de ci-security, la rejette comme
+    # invalide, et elle n'existe pas sur GitHub Enterprise Server. Les deux outils
+    # de la chaîne se contredisent : on garde la forme portable et on écarte le
+    # constat, comme dans les appelants du dépôt.
+    uses: ./.github/workflows/auto-label.yml  # zizmor: ignore[self-repository]
     with:
       prefix-map: ${{ inputs.prefix-map }}
       integration-branch: ${{ inputs.integration-branch }}
