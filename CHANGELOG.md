@@ -15,6 +15,8 @@ au 2026-09-14.
 
 ## [Non publié]
 
+## [v1.4.0] - 2026-09-18
+
 ### Ajouté
 
 - `validate-pr-labelled.yml` : pose le label de release puis contrôle les
