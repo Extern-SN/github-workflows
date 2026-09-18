@@ -286,10 +286,26 @@ jobs:
 | `sync-branch` | string | `` | Branche de développement vers laquelle reporter le commit de promotion du changelog. Sans ce report, la branche de développement garde en « Non publié » des entrées déjà publiées, et la release suivante les republie sous un nouveau numéro |
 | `major-alias` | boolean | `false` | Repositionne le tag majeur mobile (`v1` pour `v1.4.2`) sur la version publiée. À n'activer que sur un dépôt dont les consommateurs appellent ce tag mobile : le déplacement les met à jour immédiatement, sans revue de leur côté |
 
-Si `changelog-file` est renseigné, le workflow pousse un commit de publication sur
-`main`. **Le dépôt appelant doit exclure ce fichier de son propre déclencheur**
-(`paths-ignore`), sans quoi ce push relance un run qui échouera faute de PR
-mergée associée.
+### Deux façons de dater le changelog
+
+**La PR porte sa section** (recommandé). Chaque PR écrit elle-même
+`## [vX.Y.Z]`, et `validate-pr.yml` refuse la PR si la section manque, en disant
+quel numéro écrire. Au merge, `release-tag.yml` trouve la section déjà là : il ne
+promeut rien, **ne pousse rien**, et se contente de taguer et publier.
+
+C'est le seul mode qui fonctionne sur un dépôt dont la branche par défaut exige une
+PR, ce que la conformité SDU amène chaque dépôt à faire. Le 2026-09-18, le mode
+historique a coûté quatre publications manuelles au dépôt socle, chacune passant par
+une PR de deux lignes.
+
+**Le workflow promeut « Non publié »** (mode d'origine, conservé). Si la section de
+la version n'existe pas, `release-tag.yml` promeut `## [Non publié]` en version datée
+et pousse ce commit sur la branche par défaut. **Le dépôt appelant doit alors exclure
+ce fichier de son propre déclencheur** (`paths-ignore`), sans quoi ce push relance un
+run qui échouera faute de PR mergée associée. Ce mode suppose que le workflow puisse
+pousser sur la branche par défaut.
+
+Le choix ne se déclare pas : `release-tag.yml` regarde si la section existe déjà.
 
 ---
 
@@ -313,6 +329,7 @@ jobs:
 | `enforce-naming-on-base` | string | `dev` | Branche de base sur laquelle la règle de nommage s'applique. `*` pour toutes |
 | `branch-pattern` | string | `^(feature\|fix\|hotfix)/.+$` | Motif que doit respecter la branche source |
 | `enforce-naming-on-bots` | boolean | `false` | Applique aussi la règle de nommage aux PR d'automates |
+| `changelog-file` | string | `` | Changelog dont la PR doit porter la section de la version que son merge publiera. Vide pour désactiver |
 | `labels` | string | les 5 labels du Groupe | Labels de release acceptés, un par ligne |
 | `auto-label` | boolean | `false` | Pose le label avant de le contrôler, en appelant `auto-label.yml` dans un job dont le contrôle dépend |
 | `prefix-map` | string | idem `auto-label.yml` | Transmis à `auto-label.yml`, sans effet si `auto-label` vaut `false` |
@@ -391,6 +408,7 @@ que son appelant lui accorde.
 | `enforce-naming-on-base` | string | `dev` | Transmis à `validate-pr.yml` |
 | `branch-pattern` | string | `^(feature\|fix\|hotfix)/.+$` | Transmis à `validate-pr.yml` |
 | `enforce-naming-on-bots` | boolean | `false` | Transmis à `validate-pr.yml` |
+| `changelog-file` | string | `` | Transmis à `validate-pr.yml` |
 | `labels` | string | les 5 labels du Groupe | Transmis à `validate-pr.yml` |
 | `prefix-map` | string | voir `auto-label.yml` | Transmis à `auto-label.yml` |
 | `integration-branch` | string | `dev` | Transmis à `auto-label.yml` |

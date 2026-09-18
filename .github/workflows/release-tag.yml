@@ -204,6 +204,34 @@ jobs:
             exit 0
           fi
 
+          # Le changelog porte-t-il déjà la section de cette version ?
+          #
+          # C'est le cas quand la PR qui vient d'être mergée l'a écrite
+          # elle-même, contrôlée par validate-pr.yml (entrée changelog-file).
+          # Il n'y a alors rien à promouvoir : aucun commit, aucun push, et donc
+          # aucune branche protégée à forcer. Seul le corps de la section est lu,
+          # pour les notes de release.
+          #
+          # C'est la sortie du défaut qui a coûté quatre publications manuelles
+          # le 2026-09-18 : la promotion poussait un commit sur la branche par
+          # défaut, ce qu'une branche protégée refuse, et le SDU amène chaque
+          # dépôt à protéger la sienne.
+          if grep -q "^## \[$NEXT_TAG\]" "$CHANGELOG"; then
+            echo "$CHANGELOG porte déjà la section $NEXT_TAG : rien à promouvoir."
+
+            awk -v tag="## [$NEXT_TAG]" '
+              index($0, tag) == 1 { flag = 1; next }
+              /^## \[/ && flag { exit }
+              flag { print }
+            ' "$CHANGELOG" > /tmp/release-notes.md
+
+            if ! grep -q '[^[:space:]]' /tmp/release-notes.md; then
+              echo "::error title=Section de changelog vide::La section $NEXT_TAG existe dans $CHANGELOG mais n'a aucun contenu."
+              exit 1
+            fi
+            exit 0
+          fi
+
           DATE=$(date -u +%Y-%m-%d)
           sed -i "0,/^## \[Non publié\]/s//## [Non publié]\n\n## [$NEXT_TAG] - $DATE/" "$CHANGELOG"
 
