@@ -15,6 +15,8 @@ au 2026-09-14.
 
 ## [Non publié]
 
+## [v1.5.0] - 2026-09-18
+
 ### Ajouté
 
 - `scripts/labels/creer-labels.sh` : pose les cinq labels de release du Groupe sur
