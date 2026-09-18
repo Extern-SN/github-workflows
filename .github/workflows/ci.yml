@@ -76,7 +76,7 @@ jobs:
           persist-credentials: false  # aucun push : le jeton n'a rien à faire dans le checkout
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
