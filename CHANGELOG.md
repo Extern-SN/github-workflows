@@ -31,6 +31,11 @@ au 2026-09-14.
 
 ### Corrigé
 
+- L'exemple d'appel d'`auto-label.yml`, dans le README comme dans l'en-tête du
+  workflow, n'accordait que `pull-requests: write`. Un bloc `permissions` sur un
+  job met à `none` tout ce qu'il ne nomme pas, et le workflow appelé exige
+  `contents: read` : tout consommateur suivant l'exemple échouait **au
+  démarrage**, sans job créé et sans log exploitable.
 - `persist-credentials: false` sur les `actions/checkout` qui n'ont pas besoin
   d'écrire (zizmor `artipacked`, 7 occurrences).
 - `php-tests-db.yml` : image de service de base de données épinglée (zizmor

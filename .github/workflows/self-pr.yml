@@ -33,6 +33,12 @@ jobs:
   label:
     name: Pose du label de release
     permissions:
+      # "contents: read" n'est pas superflu : déclarer un bloc "permissions" sur
+      # un job met à "none" tout ce qui n'y figure pas, et auto-label.yml exige
+      # "contents: read". Sans cette ligne, l'appel échoue au démarrage, avant
+      # tout job, sur "requesting 'contents: read', but is only allowed
+      # 'contents: none'". Constaté sur cette PR le 2026-09-18.
+      contents: read
       pull-requests: write
     uses: ./.github/workflows/auto-label.yml  # zizmor: ignore[self-repository]
 

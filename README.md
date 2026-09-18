@@ -304,9 +304,17 @@ on:
 jobs:
   label:
     permissions:
+      contents: read        # obligatoire, voir ci-dessous
       pull-requests: write
     uses: Extern-SN/github-workflows/.github/workflows/auto-label.yml@v1
 ```
+
+> **Les deux permissions sont nécessaires.** Un bloc `permissions` sur un job met
+> à `none` tout ce qu'il ne nomme pas, et ce workflow exige `contents: read` pour
+> se charger. Un appelant qui n'accorde que `pull-requests: write` échoue **au
+> démarrage**, sans aucun job créé et sans log exploitable :
+> `The workflow is requesting 'contents: read', but is only allowed 'contents: none'`.
+> L'exemple de ce README a porté ce défaut jusqu'au 2026-09-18.
 
 **Inputs**
 
