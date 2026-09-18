@@ -292,6 +292,40 @@ jobs:
 | `branch-pattern` | string | `^(feature\|fix\|hotfix)/.+$` | Motif que doit respecter la branche source |
 | `enforce-naming-on-bots` | boolean | `false` | Applique aussi la règle de nommage aux PR d'automates |
 | `labels` | string | les 5 labels du Groupe | Labels de release acceptés, un par ligne |
+| `auto-label` | boolean | `false` | Pose le label avant de le contrôler, en appelant `auto-label.yml` dans un job dont le contrôle dépend |
+| `prefix-map` | string | idem `auto-label.yml` | Transmis à `auto-label.yml`, sans effet si `auto-label` vaut `false` |
+| `integration-branch` | string | `dev` | Transmis à `auto-label.yml`, sans effet si `auto-label` vaut `false` |
+| `label-ranking` | string | idem `auto-label.yml` | Transmis à `auto-label.yml`, sans effet si `auto-label` vaut `false` |
+
+### Pose du label et contrôle : un seul workflow
+
+Appelés séparément, `auto-label.yml` et `validate-pr.yml` sont déclenchés par le
+même événement et courent en parallèle : rien ne garantit que le label soit posé
+avant d'être contrôlé. Le contrôle échoue alors sur une PR parfaitement conforme.
+Le type `labeled` ne rattrape pas le coup, un événement émis avec `GITHUB_TOKEN`
+ne déclenchant aucun workflow. Ce faux rouge apprend à ignorer le contrôle, et
+c'est ainsi qu'une PR réellement sans label finit par passer.
+
+`auto-label: true` supprime la course : la pose devient un job dont le contrôle
+dépend. Le dépôt appelant retire alors son `auto-label.yml` et accorde
+`pull-requests: write`, un workflow appelé n'obtenant jamais plus de droits que
+ce que son appelant lui accorde.
+
+```yaml
+on:
+  pull_request:
+    branches: [dev, main]
+    types: [opened, edited, synchronize, labeled, unlabeled]
+
+jobs:
+  validate:
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: Extern-SN/github-workflows/.github/workflows/validate-pr.yml@v1
+    with:
+      auto-label: true
+```
 
 > **Les PR d'automates échappent à la règle de nommage.** Dependabot et Renovate
 > nomment leurs branches eux-mêmes (`dependabot/github_actions/...`) et ne se
@@ -308,7 +342,7 @@ jobs:
 ```yaml
 on:
   pull_request:
-    types: [opened]
+    types: [opened, reopened, synchronize]
 
 jobs:
   label:
@@ -335,6 +369,13 @@ jobs:
 
 `chore` et `breaking` ne se déduisent pas d'un nom de branche et restent à poser
 à la main sur une PR ordinaire.
+
+Le déclencheur inclut `synchronize` parce qu'une PR d'intégration s'enrichit après
+son ouverture : les PR qu'elle transporte sont fusionnées dans la branche pendant
+qu'elle reste ouverte. Sur le seul `opened`, son label serait déduit au moment où
+elle est vide. Quand une PR plus forte arrive ensuite, le label posé est relevé ;
+il n'est jamais abaissé, de sorte qu'un `breaking` mis à la main survit à une
+intégration qui ne porte que des correctifs.
 
 **Les PR d'intégration**
 
