@@ -15,6 +15,8 @@ au 2026-09-14.
 
 ## [Non publié]
 
+## [v1.3.1] - 2026-09-18
+
 ### Corrigé
 
 - `validate-pr.yml` : les PR d'automates échappent à la règle de nommage de
