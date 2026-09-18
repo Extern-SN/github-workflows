@@ -52,6 +52,10 @@ on:
         description: 'Transmis à validate-pr.yml'
         type: boolean
         default: false
+      changelog-file:
+        description: 'Transmis à validate-pr.yml'
+        type: string
+        default: ''
       labels:
         description: 'Transmis à validate-pr.yml'
         type: string
@@ -106,4 +110,5 @@ jobs:
       enforce-naming-on-base: ${{ inputs.enforce-naming-on-base }}
       branch-pattern: ${{ inputs.branch-pattern }}
       enforce-naming-on-bots: ${{ inputs.enforce-naming-on-bots }}
+      changelog-file: ${{ inputs.changelog-file }}
       labels: ${{ inputs.labels }}

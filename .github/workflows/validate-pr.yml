@@ -49,6 +49,18 @@ on:
           de mise à jour de dépendance. Passer "true" pour l'exiger quand même.
         type: boolean
         default: false
+      changelog-file:
+        description: >
+          Changelog au format Keep a Changelog. S'il est renseigné, la PR doit
+          porter elle-même la section de la version que son merge publiera, par
+          exemple "## [v1.6.0]". Le contrôle dit laquelle si elle manque.
+
+          C'est ce qui permet à release-tag.yml de ne plus rien pousser sur la
+          branche par défaut au merge : il trouve la section déjà écrite et se
+          contente de taguer et publier. Laisser vide conserve le comportement
+          d'origine, où la section "Non publié" est promue au merge.
+        type: string
+        default: ''
       labels:
         description: 'Labels de release acceptés, un par ligne'
         type: string
@@ -124,6 +136,70 @@ jobs:
       #   feature  → bump mineur (1.X.0)
       #   fix / hotfix / chore → bump patch (1.0.X)
       #   breaking → bump majeur (X.0.0)
+      # Le changelog doit porter la section de la version que ce merge publiera.
+      #
+      # La règle d'incrément est la même que celle de release-tag.yml, et les deux
+      # doivent le rester : c'est release-tag qui calculera le numéro au merge, et
+      # une divergence ferait échouer la publication sur une section introuvable.
+      - name: Checkout repository
+        if: inputs.changelog-file != ''
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # l'historique complet des tags
+          persist-credentials: false  # aucun push : contrôle en lecture seule
+
+      - name: Validate changelog section
+        if: inputs.changelog-file != ''
+        env:
+          CHANGELOG: ${{ inputs.changelog-file }}
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          DEPOT: ${{ github.repository }}
+        run: |
+          if [ ! -f "$CHANGELOG" ]; then
+            echo "::error title=Changelog absent::$CHANGELOG n'existe pas dans le dépôt."
+            exit 1
+          fi
+
+          LAST_TAG=$(git tag --sort=-v:refname | grep '^v' | head -n 1)
+          LABELS=$(gh api "repos/$DEPOT/pulls/$PR" -q '.labels[].name')
+
+          if [ -z "$LAST_TAG" ]; then
+            NEXT_TAG="v1.0.0"
+          else
+            VERSION="${LAST_TAG#v}"
+            IFS='.' read -r X Y Z <<< "$VERSION"
+            if echo "$LABELS" | grep -q "^breaking$"; then
+              X=$((X + 1)); Y=0; Z=0
+            elif echo "$LABELS" | grep -q "^feature$"; then
+              Y=$((Y + 1)); Z=0
+            else
+              Z=$((Z + 1))
+            fi
+            NEXT_TAG="v${X}.${Y}.${Z}"
+          fi
+
+          echo "Dernier tag : ${LAST_TAG:-aucun}"
+          echo "Version que ce merge publiera : $NEXT_TAG"
+
+          if ! grep -q "^## \[$NEXT_TAG\]" "$CHANGELOG"; then
+            echo "::error title=Section de changelog manquante::Ajoutez dans $CHANGELOG une section \"## [$NEXT_TAG] - $(date -u +%Y-%m-%d)\" décrivant ce que cette PR publie. Le merge taguera $NEXT_TAG et la release reprendra cette section."
+            exit 1
+          fi
+
+          CORPS=$(awk -v tag="## [$NEXT_TAG]" '
+            index($0, tag) == 1 { flag = 1; next }
+            /^## \[/ && flag { exit }
+            flag { print }
+          ' "$CHANGELOG")
+
+          if ! grep -q '[^[:space:]]' <<< "$CORPS"; then
+            echo "::error title=Section de changelog vide::La section $NEXT_TAG de $CHANGELOG n'a aucun contenu."
+            exit 1
+          fi
+
+          echo "Section $NEXT_TAG présente et renseignée."
+
       - name: Validate labels
         # Épinglé par SHA (v5.6.0) : un tag mobile peut être redirigé vers du code
         # hostile, qui s'exécuterait ici avec le jeton du dépôt appelant.
