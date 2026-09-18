@@ -223,7 +223,7 @@ jobs:
 ```yaml
 on:
   pull_request:
-    types: [opened]
+    types: [opened, reopened, synchronize]
 
 jobs:
   label:
@@ -242,6 +242,13 @@ jobs:
 
 `chore` et `breaking` ne se déduisent pas d'un nom de branche et restent à poser
 à la main sur une PR ordinaire.
+
+Le déclencheur inclut `synchronize` parce qu'une PR d'intégration s'enrichit après
+son ouverture : les PR qu'elle transporte sont fusionnées dans la branche pendant
+qu'elle reste ouverte. Sur le seul `opened`, son label serait déduit au moment où
+elle est vide. Quand une PR plus forte arrive ensuite, le label posé est relevé ;
+il n'est jamais abaissé, de sorte qu'un `breaking` mis à la main survit à une
+intégration qui ne porte que des correctifs.
 
 **Les PR d'intégration**
 

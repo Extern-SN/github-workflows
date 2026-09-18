@@ -17,12 +17,19 @@ name: Auto Label PR
 # Les labels "chore" et "breaking" ne se déduisent pas d'un nom de branche et
 # restent manuels sur une PR ordinaire.
 #
+# Une PR d'intégration s'enrichit après son ouverture : les PR qu'elle transporte
+# sont fusionnées dans la branche pendant qu'elle reste ouverte. Déduire son label
+# au seul événement "opened" revient donc à le lire au moment où elle est vide.
+# D'où le déclenchement sur "synchronize", et la règle qui relève le label déjà
+# posé quand une PR plus forte arrive ensuite. Le label ne redescend jamais : un
+# "breaking" mis à la main survit à une intégration qui ne porte que des correctifs.
+#
 # Le dépôt appelant garde le déclencheur, un workflow réutilisable ne pouvant
 # pas définir son propre "on". Appel type :
 #
 #   on:
 #     pull_request:
-#       types: [opened]
+#       types: [opened, reopened, synchronize]
 #
 #   jobs:
 #     label:
@@ -108,23 +115,39 @@ jobs:
                 .write();
             };
 
-            // Garde-fou : validate-pr.yml exige EXACTEMENT un label de version.
-            // En poser un second sur une PR qui en porte déjà un ferait échouer
-            // le contrôle au lieu de le satisfaire.
-            const deja = (pr.labels || []).map(l => l.name).filter(n => ranking.includes(n));
-            if (deja.length > 0) {
-              console.log(`La PR porte déjà le label de version "${deja[0]}", rien à faire.`);
-              return;
-            }
+            // Labels de version déjà posés. On les relit par l'API plutôt que de
+            // se fier à la charge utile de l'événement : sur "synchronize" celle-ci
+            // peut décrire un état antérieur de la PR.
+            const actuels = await github.paginate(github.rest.issues.listLabelsOnIssue, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              per_page: 100,
+            });
+            const deja = actuels.map(l => l.name).filter(n => ranking.includes(n));
 
-            // 1. Cas courant : le nom de branche porte l'information.
-            const parPrefixe = Object.entries(map).find(([p]) => branch.startsWith(p))?.[1];
-            if (parPrefixe) {
-              await poser(parPrefixe, `déduit du préfixe de la branche "${branch}"`);
-              return;
-            }
+            const force = l => ranking.indexOf(l);  // 0 est le plus fort
+            const plusFort = liste => liste.reduce((a, b) => (force(b) < force(a) ? b : a));
 
-            // 2. PR d'intégration : le nom ne dit rien, les PR transportées si.
+            const retirer = async (label) => {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  name: label,
+                });
+                console.log(`Label "${label}" retiré.`);
+              } catch (e) {
+                // Déjà retiré entre-temps : sans intérêt, on continue.
+                if (e.status !== 404) throw e;
+              }
+            };
+
+            // 1. PR d'intégration : son nom de branche ne dit rien, les PR qu'elle
+            // transporte si. Ce cas passe avant le garde-fou sur les labels déjà
+            // posés, parce qu'une intégration continue de s'enrichir après son
+            // ouverture : un label déduit trop tôt doit pouvoir être relevé.
             if (integration && branch === integration) {
               const commits = await github.paginate(github.rest.pulls.listCommits, {
                 owner: context.repo.owner,
@@ -163,22 +186,64 @@ jobs:
                 }
               }
 
+              const liste = [...numeros].sort((a, b) => a - b).map(n => `#${n}`).join(', ');
               const retenu = ranking.find(l => trouves.has(l));
-              if (retenu) {
-                const liste = [...numeros].sort((a, b) => a - b).map(n => `#${n}`).join(', ');
+
+              if (!retenu) {
+                if (deja.length > 0) {
+                  console.log(`Aucun label transporté lisible, la PR garde "${deja[0]}".`);
+                  return;
+                }
+                core.warning(
+                  `Intégration "${branch}" : aucune des PR transportées ne porte de ` +
+                  `label de version. Posez-en un à la main, sinon le contrôle des ` +
+                  `conventions bloquera la fusion.`
+                );
+                return;
+              }
+
+              if (deja.length === 0) {
                 await poser(retenu, `plus fort label des PR transportées (${liste})`);
                 return;
               }
 
-              core.warning(
-                `Intégration "${branch}" : aucune des PR transportées ne porte de ` +
-                `label de version. Posez-en un à la main, sinon le contrôle des ` +
-                `conventions bloquera la fusion.`
-              );
+              // Le label posé ne redescend jamais : un "breaking" mis à la main
+              // survit à une intégration qui ne transporte que des correctifs.
+              const enPlace = plusFort(deja);
+              const garde = force(retenu) < force(enPlace) ? retenu : enPlace;
+
+              if (garde === enPlace && deja.length === 1) {
+                console.log(`La PR porte déjà "${enPlace}", au moins aussi fort que "${retenu}".`);
+                return;
+              }
+
+              for (const l of deja) {
+                if (l !== garde) await retirer(l);
+              }
+              if (!deja.includes(garde)) {
+                await poser(garde, `relevé depuis "${enPlace}" par les PR transportées (${liste})`);
+              } else {
+                console.log(`Labels de version surnuméraires retirés, "${garde}" conservé.`);
+              }
               return;
             }
 
-            // 3. Branche non reconnue : "chore" et "breaking" restent manuels.
+            // 2. Garde-fou : validate-pr.yml exige EXACTEMENT un label de version.
+            // En poser un second sur une PR qui en porte déjà un ferait échouer le
+            // contrôle au lieu de le satisfaire.
+            if (deja.length > 0) {
+              console.log(`La PR porte déjà le label de version "${deja[0]}", rien à faire.`);
+              return;
+            }
+
+            // 3. Cas courant : le nom de branche porte l'information.
+            const parPrefixe = Object.entries(map).find(([p]) => branch.startsWith(p))?.[1];
+            if (parPrefixe) {
+              await poser(parPrefixe, `déduit du préfixe de la branche "${branch}"`);
+              return;
+            }
+
+            // 4. Branche non reconnue : "chore" et "breaking" restent manuels.
             // Pas d'échec ici, validate-pr.yml bloquera la fusion avec un
             // message explicite tant qu'aucun label n'est posé.
             console.log(`Aucun label déduit pour "${branch}", posez "chore" ou "breaking" à la main.`);
