@@ -55,7 +55,11 @@ jobs:
 
     services:
       database:
-        image: ${{ inputs.db-image }}
+        # L'image du service est choisie par le dépôt appelant (db-image) : ce
+        # workflow ne peut pas l'épingler par digest sans lui imposer une
+        # version de base de données. L'épinglage relève donc de l'appelant,
+        # qui passe la valeur, et non de la chaîne mutualisée.
+        image: ${{ inputs.db-image }}  # zizmor: ignore[unpinned-images]
         env:
           MYSQL_ROOT_PASSWORD: ${{ inputs.db-root-password }}
           MYSQL_DATABASE: ${{ inputs.db-name }}
@@ -73,6 +77,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          persist-credentials: true  # le badge de couverture est commité par git-auto-commit-action
 
       # pcov plutôt que xdebug : couverture de lignes suffisante pour les badges,
       # nettement plus rapide. Désactivé quand aucune couverture n'est demandée
