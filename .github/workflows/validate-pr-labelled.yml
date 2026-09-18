@@ -1,0 +1,109 @@
+name: Validate PR (label posé)
+
+# Pose le label de release, puis contrôle les conventions de PR, dans cet ordre.
+#
+# Pourquoi un workflow de plus plutôt qu'une entrée de validate-pr.yml : GitHub
+# valide les permissions des jobs imbriqués à la création du run, avant
+# d'évaluer le moindre "if". Un job de pose optionnel logé dans validate-pr.yml
+# imposait donc "pull-requests: write" à TOUS ses appelants, y compris ceux qui
+# ne s'en servaient pas, et faisait échouer les autres au démarrage :
+#
+#   Error calling workflow 'validate-pr.yml'. The nested job 'label' is
+#   requesting 'pull-requests: write', but is only allowed 'pull-requests: read'.
+#
+# Séparer laisse validate-pr.yml en lecture seule pour les dépôts qui posent
+# leurs labels autrement, et réserve l'écriture à ceux qui la demandent.
+#
+# Ce que la composition apporte, et que deux workflows distincts ne peuvent pas
+# donner : l'ordre. Déclenchés par le même événement, auto-label et validate-pr
+# courent en parallèle, et le contrôle échoue sur des PR conformes dont le label
+# arrive une seconde trop tard. Le type "labeled" ne rattrape rien, un événement
+# émis avec le GITHUB_TOKEN ne déclenchant aucun workflow. Ce faux rouge apprend
+# à ignorer le contrôle, et c'est ainsi qu'une PR réellement sans label passe.
+#
+# Le dépôt appelant garde le déclencheur, retire son appel à auto-label.yml, et
+# accorde l'écriture : un workflow appelé n'obtient jamais plus de droits que ce
+# que son appelant lui accorde.
+#
+#   on:
+#     pull_request:
+#       branches: [dev, main]
+#       types: [opened, edited, synchronize, labeled, unlabeled]
+#
+#   jobs:
+#     validate:
+#       permissions:
+#         contents: read
+#         pull-requests: write
+#       uses: Extern-SN/github-workflows/.github/workflows/validate-pr-labelled.yml@v1
+
+on:
+  workflow_call:
+    inputs:
+      enforce-naming-on-base:
+        description: 'Transmis à validate-pr.yml'
+        type: string
+        default: 'dev'
+      branch-pattern:
+        description: 'Transmis à validate-pr.yml'
+        type: string
+        default: '^(feature|fix|hotfix)/.+$'
+      enforce-naming-on-bots:
+        description: 'Transmis à validate-pr.yml'
+        type: boolean
+        default: false
+      labels:
+        description: 'Transmis à validate-pr.yml'
+        type: string
+        default: |
+          feature
+          fix
+          hotfix
+          chore
+          breaking
+      prefix-map:
+        description: >
+          Transmis à auto-label.yml. Le défaut doit rester identique au sien.
+        type: string
+        default: '{"feature/": "feature", "fix/": "fix", "hotfix/": "hotfix"}'
+      integration-branch:
+        description: 'Transmis à auto-label.yml'
+        type: string
+        default: 'dev'
+      label-ranking:
+        description: 'Transmis à auto-label.yml'
+        type: string
+        default: '["breaking", "feature", "fix", "hotfix", "chore"]'
+
+permissions:
+  contents: read
+
+jobs:
+  label:
+    name: Pose du label de release
+    permissions:
+      # "contents: read" n'est pas superflu : un bloc "permissions" met à "none"
+      # tout ce qu'il ne nomme pas, et auto-label.yml exige la lecture du dépôt.
+      contents: read
+      pull-requests: write
+    uses: ./.github/workflows/auto-label.yml  # zizmor: ignore[self-repository]
+    with:
+      prefix-map: ${{ inputs.prefix-map }}
+      integration-branch: ${{ inputs.integration-branch }}
+      label-ranking: ${{ inputs.label-ranking }}
+
+  validate:
+    name: Contrôle des conventions
+    needs: [label]
+    # Une pose sautée ou en échec ne dispense pas du contrôle : elle doit le
+    # faire échouer sur le label manquant, pas l'annuler.
+    if: always()
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/validate-pr.yml  # zizmor: ignore[self-repository]
+    with:
+      enforce-naming-on-base: ${{ inputs.enforce-naming-on-base }}
+      branch-pattern: ${{ inputs.branch-pattern }}
+      enforce-naming-on-bots: ${{ inputs.enforce-naming-on-bots }}
+      labels: ${{ inputs.labels }}

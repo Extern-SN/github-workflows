@@ -15,6 +15,32 @@ au 2026-09-14.
 
 ## [Non publié]
 
+### Ajouté
+
+- `validate-pr-labelled.yml` : pose le label de release puis contrôle les
+  conventions, dans cet ordre. C'est la forme sous laquelle l'entrée `auto-label`
+  de #22 est livrée, après que la version mergée s'est révélée imposer
+  `pull-requests: write` à tous les appelants de `validate-pr.yml`.
+- `validate-pr.yml` : entrée `enforce-naming-on-bots`, et exemption par défaut des
+  PR d'automates (#29).
+
+### Corrigé
+
+- `validate-pr.yml` redevient strictement en lecture seule. GitHub valide les
+  permissions des jobs imbriqués à la création du run, avant tout `if` : le job de
+  pose optionnel ajouté par #22 faisait échouer au démarrage, sans job ni log
+  exploitable, tout appelant n'accordant que `pull-requests: read`, ce qui est le
+  cas des dix-huit dépôts en cours de mise en conformité.
+- L'appel local ajouté par #22 faisait échouer `ci-security` sur le dépôt lui-même,
+  qui s'audite au seuil `low` : la dérogation motivée `self-repository` manquait.
+- Montée des actions officielles : `actions/checkout` 5 vers 7,
+  `actions/setup-python` 6 vers 7, `codecov/codecov-action` 5.5.5 vers 7.1.0
+  (#25, #24, #26). Ces trois majeures correspondent au passage à Node 24, déjà
+  engagé par #19.
+- Les cinq labels de release de la convention du Groupe n'existaient pas tous sur
+  ce dépôt : `chore`, `hotfix` et `breaking` manquaient, et `validate-pr` échouait
+  donc sur des PR par ailleurs conformes. Créés le 2026-09-18.
+
 ## [v1.3.1] - 2026-09-18
 
 ### Corrigé
