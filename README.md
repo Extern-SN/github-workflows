@@ -26,6 +26,27 @@ Outils de parc, exécutés à la main, hors CI.
 | Dossier | Description |
 |---------|-------------|
 | `scripts/registre/` | Inventaire et purge des tags d'un dépôt Docker Hub, liste de conservation construite sur le cluster |
+| `scripts/labels/` | Pose les cinq labels de release du Groupe sur un dépôt, à l'adoption de la chaîne |
+
+### scripts/labels/creer-labels.sh
+
+```bash
+scripts/labels/creer-labels.sh <owner>/<depot>             # simulation
+scripts/labels/creer-labels.sh <owner>/<depot> --execute   # crée ce qui manque
+```
+
+À lancer **à l'adoption de la chaîne**, avant la première PR. `validate-pr` exige
+exactement un des cinq labels de release, et `release-tag` s'en sert pour décider du
+chiffre à incrémenter.
+
+> **Pourquoi ce n'est pas facultatif.** `auto-label.yml` s'en sort sans, l'API GitHub
+> créant le label au moment de le poser. **Dependabot, lui, ignore un label absent** :
+> sa PR arrive sans label et `validate-pr` la refuse. Le kit SDU posant
+> `dependabot.yml` en même temps que `validate-pr`, tout dépôt qui adopte la chaîne
+> sans ses labels verra rougir ses PR de mise à jour de dépendance. Vérifié à l'API le
+> 2026-09-18 sur six dépôts du parc : tous n'avaient que `feature`.
+
+Le script est idempotent, ne supprime rien, et simule par défaut.
 
 ---
 

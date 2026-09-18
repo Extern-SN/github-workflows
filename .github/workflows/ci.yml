@@ -63,7 +63,7 @@ jobs:
       # un "tr" qui remplace bien deux caractères par un saut de ligne
       # (SC2020). Une CI rouge en permanence finit par être ignorée.
       - name: shellcheck
-        run: shellcheck -x -S warning scripts/registre/*.sh
+        run: shellcheck -x -S warning scripts/*/*.sh
 
   contrat:
     name: Contrat de documentation
