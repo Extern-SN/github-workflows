@@ -15,6 +15,15 @@ au 2026-09-14.
 
 ## [Non publié]
 
+### Ajouté
+
+- `scripts/labels/creer-labels.sh` : pose les cinq labels de release du Groupe sur
+  un dépôt, en simulation par défaut. Sans eux, Dependabot ouvre des PR sans label,
+  qu'`auto-label` ne rattrape pas et que `validate-pr` refuse. Les six dépôts du
+  parc vérifiés le 2026-09-18 n'avaient que `feature`.
+- `ci.yml` : shellcheck couvre désormais tous les scripts, et non le seul
+  répertoire `registre`.
+
 ## [v1.4.0] - 2026-09-18
 
 ### Ajouté
