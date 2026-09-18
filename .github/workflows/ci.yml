@@ -1,0 +1,87 @@
+name: CI
+
+# Le dépôt qui porte la chaîne du parc s'applique sa propre chaîne.
+#
+# Jusqu'au 2026-09-18, ses douze workflows étaient tous en "workflow_call" seul :
+# aucun ne s'exécutait ici, et "self-security.yml" restait en déclenchement
+# manuel. Le dépôt le mieux placé pour casser tout le parc était le seul à ne
+# rien contrôler chez lui.
+#
+# Trois contrôles, qui portent sur ce que ce dépôt produit réellement :
+#
+#   workflows : actionlint + zizmor, par ci-security.yml (le service rendu au
+#               parc, appelé sur lui-même)
+#   scripts   : shellcheck sur les scripts d'entretien, qu'actionlint ne voit
+#               pas (il n'analyse que les blocs "run" des workflows)
+#   contrat   : le README documente la chaîne telle qu'elle est écrite
+
+# Appel en "./" et non en "$/" : la syntaxe "$/" est celle que recommande
+# zizmor et que documente GitHub, mais actionlint 1.7.7, l'autre moitié de notre
+# propre ci-security, la rejette comme invalide, et elle n'existe pas sur GitHub
+# Enterprise Server. Les deux outils de la chaîne se contredisent : on garde la
+# forme portable, acceptée par les deux, et on écarte le constat zizmor ici.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Exigence maximale sur nous-mêmes : "low" là où la chaîne conseille "high"
+  # aux dépôts consommateurs. Un constat de sécurité sur un workflow d'ici se
+  # propage à tous les dépôts qui l'appellent.
+  workflows:
+    name: Audit des workflows
+    uses: ./.github/workflows/ci-security.yml  # zizmor: ignore[self-repository]
+    with:
+      min-severity: low
+
+  scripts:
+    name: Scripts d'entretien
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false  # aucun push : le jeton n'a rien à faire dans le checkout
+
+      # shellcheck est préinstallé sur les runners GitHub-hosted. -x suit les
+      # fichiers sourcés.
+      #
+      # Seuil "warning", le même que celui qu'actionlint applique aux blocs
+      # "run" de la chaîne. Au seuil "style", les deux seuls constats restants
+      # sont des faux positifs vérifiés le 2026-09-18 : un sed de préfixage
+      # multiligne (SC2001, l'expansion proposée ne préfixe pas les lignes) et
+      # un "tr" qui remplace bien deux caractères par un saut de ligne
+      # (SC2020). Une CI rouge en permanence finit par être ignorée.
+      - name: shellcheck
+        run: shellcheck -x -S warning scripts/registre/*.sh
+
+  contrat:
+    name: Contrat de documentation
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false  # aucun push : le jeton n'a rien à faire dans le checkout
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Installe PyYAML
+        run: pip install --require-hashes --no-deps -r scripts/ci/requirements.txt
+
+      - name: Vérifie le contrat de documentation
+        run: python scripts/ci/verifie-contrat.py
