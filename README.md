@@ -14,6 +14,7 @@ Workflows GitHub Actions réutilisables pour tous les services Extern SN.
 | `release-tag.yml` | Tag SemVer au merge sur `main`, changelog et GitHub Release |
 | `validate-pr.yml` | Contrôle du nommage de branche et du label de release |
 | `auto-label.yml` | Pose du label de release depuis le préfixe de branche |
+| `validate-pr-labelled.yml` | Pose du label **puis** contrôle des conventions, dans cet ordre |
 | `php-lint.yml` | Analyse statique PHP (phpstan) |
 | `ci-security.yml` | Audit des workflows GitHub Actions (actionlint + zizmor) |
 | `debt-report.yml` | Rapport récurrent de dette technique pour les stacks LEGACY ou EOL |
@@ -334,6 +335,53 @@ jobs:
 > personne ne peut changer. Le **label de release reste exigé** : le poser revient
 > à la configuration de l'automate, par exemple `labels: ["chore"]` dans
 > `dependabot.yml`, `auto-label.yml` ne sachant rien déduire de ces noms de branche.
+
+---
+
+## validate-pr-labelled.yml
+
+Pose le label de release, **puis** contrôle les conventions. À préférer à l'appel
+séparé de `auto-label.yml` et `validate-pr.yml`, qui courent en parallèle quand ils
+écoutent le même événement : le contrôle échoue alors sur des PR conformes dont le
+label arrive une seconde trop tard.
+
+```yaml
+on:
+  pull_request:
+    branches: [dev, main]
+    types: [opened, edited, synchronize, labeled, unlabeled]
+
+jobs:
+  validate:
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: Extern-SN/github-workflows/.github/workflows/validate-pr-labelled.yml@v1
+```
+
+Le dépôt appelant **retire son appel à `auto-label.yml`** et accorde
+`pull-requests: write` : un workflow appelé n'obtient jamais plus de droits que ce
+que son appelant lui accorde.
+
+**Inputs**
+
+| Nom | Type | Défaut | Description |
+|-----|------|--------|-------------|
+| `enforce-naming-on-base` | string | `dev` | Transmis à `validate-pr.yml` |
+| `branch-pattern` | string | `^(feature\|fix\|hotfix)/.+$` | Transmis à `validate-pr.yml` |
+| `enforce-naming-on-bots` | boolean | `false` | Transmis à `validate-pr.yml` |
+| `labels` | string | les 5 labels du Groupe | Transmis à `validate-pr.yml` |
+| `prefix-map` | string | voir `auto-label.yml` | Transmis à `auto-label.yml` |
+| `integration-branch` | string | `dev` | Transmis à `auto-label.yml` |
+| `label-ranking` | string | voir `auto-label.yml` | Transmis à `auto-label.yml` |
+
+> **Pourquoi un workflow séparé, et non une entrée de `validate-pr.yml`.** GitHub
+> valide les permissions des jobs imbriqués **à la création du run**, avant
+> d'évaluer le moindre `if`. Un job de pose optionnel logé dans `validate-pr.yml`
+> imposait `pull-requests: write` à tous ses appelants, même à ceux qui ne
+> l'utilisaient pas, et faisait échouer les autres au démarrage :
+> `The nested job 'label' is requesting 'pull-requests: write', but is only allowed 'pull-requests: read'`.
+> Constaté le 2026-09-18. `validate-pr.yml` reste donc strictement en lecture.
 
 ---
 

@@ -1,25 +1,16 @@
 name: Conventions de PR (self)
 
-# Ce dépôt s'impose les conventions qu'il impose au parc : nommage de branche et
-# label de release, contrôlés par ses propres workflows, appelés en local.
+# Ce dépôt s'impose les conventions qu'il impose au parc, par le workflow qu'il
+# donne au parc : validate-pr-labelled.yml, qui pose le label puis contrôle.
 #
-# L'ordre des deux jobs n'est pas décoratif. "validate-pr" exige le label que
-# "auto-label" pose : les laisser écouter le même événement met les deux en
-# course, et une PR sur deux partait rouge en vague 1. Le contrôle dépend donc
-# de la pose, ce qui rend l'ordre déterministe.
+# Jusqu'au 2026-09-18, ce fichier composait lui-même les deux appels. La
+# composition vit désormais dans la chaîne, là où tous les dépôts peuvent s'en
+# servir, et ce dépôt la consomme comme n'importe quel autre.
 #
-# "if: always()" sur le contrôle : une pose sautée ou en échec ne dispense pas
-# du contrôle, elle doit le faire échouer sur le label manquant.
-#
-# Les dépôts consommateurs obtiendront la même chose par l'entrée "auto-label"
-# de validate-pr.yml (PR #22), qui n'est pas encore publiée. Ici l'appel est
-# local, donc il porte déjà la composition voulue.
-
-# Appel en "./" et non en "$/" : la syntaxe "$/" est celle que recommande
-# zizmor et que documente GitHub, mais actionlint 1.7.7, l'autre moitié de notre
-# propre ci-security, la rejette comme invalide, et elle n'existe pas sur GitHub
-# Enterprise Server. Les deux outils de la chaîne se contredisent : on garde la
-# forme portable, acceptée par les deux, et on écarte le constat zizmor ici.
+# Appel en "./" et non en "$/" : zizmor recommande "$/" et GitHub la documente,
+# mais actionlint 1.7.7, l'autre moitié de ci-security, la rejette comme
+# invalide, et elle n'existe pas sur GitHub Enterprise Server. Les deux outils
+# de la chaîne se contredisent : on garde la forme portable.
 
 on:
   pull_request:
@@ -30,26 +21,12 @@ permissions:
   contents: read
 
 jobs:
-  label:
-    name: Pose du label de release
+  conventions:
+    name: Conventions de PR
     permissions:
-      # "contents: read" n'est pas superflu : déclarer un bloc "permissions" sur
-      # un job met à "none" tout ce qui n'y figure pas, et auto-label.yml exige
-      # "contents: read". Sans cette ligne, l'appel échoue au démarrage, avant
-      # tout job, sur "requesting 'contents: read', but is only allowed
-      # 'contents: none'". Constaté sur cette PR le 2026-09-18.
       contents: read
       pull-requests: write
-    uses: ./.github/workflows/auto-label.yml  # zizmor: ignore[self-repository]
-
-  validate:
-    name: Contrôle des conventions
-    needs: label
-    if: always()
-    permissions:
-      contents: read
-      pull-requests: read
-    uses: ./.github/workflows/validate-pr.yml  # zizmor: ignore[self-repository]
+    uses: ./.github/workflows/validate-pr-labelled.yml  # zizmor: ignore[self-repository]
     with:
       # Ce dépôt n'a pas de branche d'intégration : la règle de nommage
       # s'applique à toutes ses PR, pas seulement à celles vers "dev".
