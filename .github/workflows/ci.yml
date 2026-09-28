@@ -41,6 +41,11 @@ jobs:
     name: Audit des workflows
     uses: ./.github/workflows/ci-security.yml  # zizmor: ignore[self-repository]
     with:
+      # Ce dépôt est public : ses propres runs restent sur un runner
+      # GitHub-hosted, gratuit ici, et surtout jamais sur le runner self-hosted
+      # du Groupe, qu'une PR de fork ferait exécuter du code non relu.
+      # Le guillemet double est requis : "runner" est déplié par fromJSON.
+      runner: '"ubuntu-22.04"'
       min-severity: low
 
   scripts:

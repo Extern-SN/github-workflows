@@ -2,6 +2,12 @@
 
 Workflows GitHub Actions réutilisables pour tous les services Extern SN.
 
+> **Depuis `v1.7.0`, tous ces workflows s'exécutent par défaut sur le runner
+> self-hosted du Groupe**, le quota GitHub Actions de l'organisation étant
+> épuisé. Aucune modification n'est requise dans les dépôts appelants. Voir
+> [Choix du runner](#choix-du-runner-entrée-runner) pour forcer un runner
+> GitHub-hosted ou connaître les prérequis de la machine.
+
 ## Workflows disponibles
 
 | Fichier | Description |
@@ -76,6 +82,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
+| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
 | `registry` | string | — | Registre cible |
 | `image-name` | string | — | Nom image sans registre |
 | `dockerfile` | string | `Dockerfile` | Chemin du Dockerfile |
@@ -130,6 +137,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
+| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
 | `php-version` | string | — | Version PHP |
 | `extensions` | string | `mbstring, intl, xml, dom, curl, zip` | Extensions PHP installées, séparées par des virgules |
 | `install-command` | string | `composer install --prefer-dist ...` | Installation des dépendances |
@@ -161,6 +169,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
+| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
 | `php-version` | string | — | Version PHP |
 | `extensions` | string | `mbstring, intl, xml, dom, curl, zip` | Extensions PHP installées |
 | `install-command` | string | `composer install --prefer-dist ...` | Installation des dépendances |
@@ -192,6 +201,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
+| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
 | `php-version` | string | — | Version PHP |
 | `extensions` | string | `mbstring, intl, xml, dom, curl, zip` | Extensions PHP installées |
 | `install-command` | string | `composer install --prefer-dist ...` | Installation des dépendances |
@@ -215,6 +225,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
+| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
 | `node-version` | string | `22` | Version Node |
 | `install-command` | string | `npm ci` | Installation des dépendances |
 | `test-command` | string | `npm run test:coverage` | Commande de test |
@@ -248,6 +259,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
+| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
 | `python-version` | string | `3.12` | Version Python |
 | `install-command` | string | `pip install -e .[dev]` | Installation des dépendances |
 | `lint-command` | string | `` | Lint (ignoré si vide) |
@@ -280,6 +292,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
+| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
 | `docker-workflow-file` | string | `docker-build.yml` | Workflow déclenché en `workflow_dispatch` après la création du tag. **Chaîne vide pour un dépôt qui ne construit pas d'image** : l'étape est sautée au lieu d'échouer sur un workflow absent |
 | `changelog-file` | string | `` | Changelog Keep a Changelog. Sa section `## [Non publié]` est promue en version datée avant le tag. Vide pour désactiver |
 | `create-release` | boolean | `false` | Publie une GitHub Release, corps repris de la section promue |
@@ -326,6 +339,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
+| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
 | `enforce-naming-on-base` | string | `dev` | Branche de base sur laquelle la règle de nommage s'applique. `*` pour toutes |
 | `branch-pattern` | string | `^(feature\|fix\|hotfix)/.+$` | Motif que doit respecter la branche source |
 | `enforce-naming-on-bots` | boolean | `false` | Applique aussi la règle de nommage aux PR d'automates |
@@ -405,6 +419,7 @@ que son appelant lui accorde.
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
+| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
 | `enforce-naming-on-base` | string | `dev` | Transmis à `validate-pr.yml` |
 | `branch-pattern` | string | `^(feature\|fix\|hotfix)/.+$` | Transmis à `validate-pr.yml` |
 | `enforce-naming-on-bots` | boolean | `false` | Transmis à `validate-pr.yml` |
@@ -450,6 +465,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
+| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
 | `prefix-map` | string | `{"feature/": "feature", "fix/": "fix", "hotfix/": "hotfix"}` | Correspondance préfixe de branche vers label, en JSON |
 | `integration-branch` | string | `dev` | Branche dont le label se déduit des PR transportées. Vide pour désactiver |
 | `label-ranking` | string | `["breaking", "feature", "fix", "hotfix", "chore"]` | Labels de version du plus fort au plus faible |
@@ -535,6 +551,7 @@ issue. Ne pas cloner évite de laisser un jeton dans le répertoire de travail.
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
+| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
 | `stack` | string | — | Stack concernée, nommée comme au référentiel SDU |
 | `statut` | string | `EOL` | Statut SDU de la stack : `EOL` ou `LEGACY` |
 | `motif` | string | `` | Ce qui bloque ou ce que la situation impose |
@@ -586,6 +603,7 @@ qui s'exécutent dans le runner avec le jeton du dépôt.
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
+| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
 | `min-severity` | string | `high` | Sévérité zizmor à partir de laquelle le job échoue |
 | `zizmor-config` | string | `zizmor.yml` | Configuration zizmor du dépôt appelant, ignorée si absente |
 | `actionlint-version` | string | `1.7.7` | Version d'actionlint installée |
@@ -604,6 +622,86 @@ rules:
         "Extern-SN/*": ref-pin
         "*": hash-pin
 ```
+
+---
+
+## Choix du runner (entrée `runner`)
+
+Le quota GitHub Actions de l'organisation (2000 min/mois) est épuisé. Tous les
+workflows réutilisables de ce dépôt acceptent donc une entrée `runner` dont le
+défaut cible le runner self-hosted du Groupe : **les dépôts appelants basculent
+sans rien modifier chez eux**.
+
+| Nom | Type | Défaut | Description |
+|-----|------|--------|-------------|
+| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | Labels du runner, au format JSON |
+
+La valeur est dépliée par `fromJSON`, ce qui autorise les deux formes :
+
+```yaml
+runner: '["self-hosted","Linux","X64","ovh-ppr"]'   # liste de labels (défaut)
+runner: '"ubuntu-22.04"'                            # runner unique
+```
+
+> **Les guillemets doubles à l'intérieur des simples ne sont pas une coquille.**
+> `fromJSON` attend du JSON : `'"ubuntu-22.04"'` est la chaîne JSON
+> `"ubuntu-22.04"`. Écrire `runner: 'ubuntu-22.04'` fait échouer le job au
+> démarrage, `ubuntu-22.04` n'étant pas du JSON valide.
+
+### Forcer un runner GitHub-hosted
+
+Pour un dépôt public (minutes gratuites), ou le temps d'un diagnostic :
+
+```yaml
+jobs:
+  tests:
+    uses: Extern-SN/github-workflows/.github/workflows/php-tests.yml@v1
+    with:
+      runner: '"ubuntu-22.04"'
+```
+
+### Prérequis du runner self-hosted
+
+Un runner self-hosted n'est pas une image GitHub-hosted : **rien n'y est garanti
+préinstallé**, et les jobs de cette chaîne n'installent rien au niveau système —
+aucun `sudo apt-get`, un runner partagé ne se modifie pas depuis un job. Les
+workflows vérifient la présence des outils dont ils ont besoin et échouent avec
+un message explicite plutôt que sur un `command not found`.
+
+| Outil | Requis par |
+|-------|------------|
+| `git`, `curl`, `tar` | toute la chaîne |
+| `docker` + `buildx` | `docker-build.yml` |
+| `docker` (services) | `php-tests-db.yml` |
+| `gh` (GitHub CLI) | `release-tag.yml`, `debt-report.yml`, `validate-pr.yml` (si `changelog-file`) |
+| `shellcheck` | `ci-security.yml` |
+| `python3` + `pip` (ou `pipx`) | `ci-security.yml` (installation de zizmor) |
+
+`php-tests-db.yml` garde ses `services:`, démarrés par le runner **avant** le
+premier pas du job : sans Docker fonctionnel, le job échoue à l'initialisation,
+avant tout log exploitable, et aucune étape ne peut le rattraper.
+
+Les runtimes applicatifs (PHP, Node, Python) restent installés par les actions
+`setup-*` et n'ont pas à être présents sur la machine.
+
+Le job n'a besoin d'aucun droit root : `ci-security.yml` installe actionlint
+dans `$RUNNER_TEMP/bin` et zizmor via `pip install --user`.
+
+### Ce dépôt reste sur GitHub-hosted, délibérément
+
+`ci.yml`, `self-pr.yml` et `self-release.yml` — les workflows propres à ce dépôt
+— restent sur `ubuntu-22.04` et passent explicitement `runner: '"ubuntu-22.04"'`
+à leurs appels internes. Deux raisons :
+
+1. ce dépôt est **public**, ses minutes GitHub-hosted sont donc gratuites ;
+2. surtout, **un runner self-hosted ne doit jamais exécuter le code d'une PR
+   venant d'un fork**. Le runner est une machine durable et partagée : du code
+   non relu y accéderait au disque, au cache et au réseau des autres jobs.
+
+Le groupe de runners de l'organisation n'autorise d'ailleurs pas les dépôts
+publics (`allows_public_repositories: false`), ce qui rend cette règle
+structurelle et pas seulement conventionnelle. Tous les dépôts appelants du parc
+sont privés et ne sont pas concernés par cette restriction.
 
 ---
 

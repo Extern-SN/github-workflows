@@ -29,6 +29,17 @@ name: Validate PR
 on:
   workflow_call:
     inputs:
+      runner:
+        description: >
+          Labels du runner au format JSON, par exemple ["self-hosted","linux"],
+          ou une chaîne JSON pour un runner unique : "ubuntu-22.04".
+          Le défaut cible le runner self-hosted du Groupe : le quota GitHub
+          Actions de l'organisation est épuisé, et les dépôts appelants
+          basculent sans rien modifier chez eux. Passer '"ubuntu-22.04"'
+          (guillemets simples ET doubles) pour forcer un runner GitHub-hosted.
+        type: string
+        required: false
+        default: '["self-hosted","Linux","X64","ovh-ppr"]'
       enforce-naming-on-base:
         description: >
           Branche de base sur laquelle la règle de nommage s'applique.
@@ -77,7 +88,7 @@ permissions:
 jobs:
   validate:
     name: Conventions de PR
-    runs-on: ubuntu-22.04
+    runs-on: ${{ fromJSON(inputs.runner) }}
     permissions:
       contents: read
       pull-requests: read  # lecture des labels de la PR
@@ -147,6 +158,23 @@ jobs:
         with:
           fetch-depth: 0  # l'historique complet des tags
           persist-credentials: false  # aucun push : contrôle en lecture seule
+
+      # "gh" et "git" ne servent qu'au contrôle du changelog : la vérification
+      # porte la même condition, pour ne pas exiger d'un runner des outils dont
+      # le job ne se servira pas. Aucun "sudo apt-get" : un runner self-hosted
+      # partagé ne se modifie pas depuis un job.
+      - name: Vérifie les outils attendus
+        if: inputs.changelog-file != ''
+        run: |
+          manquants=""
+          for outil in gh git; do
+            command -v "$outil" >/dev/null 2>&1 || manquants="$manquants $outil"
+          done
+          if [ -n "$manquants" ]; then
+            echo "::error title=Outils manquants sur le runner::Absents :$manquants. Les installer sur le runner self-hosted, ou appeler ce workflow avec runner: '\"ubuntu-22.04\"'."
+            exit 1
+          fi
+          echo "Outils présents : gh, git."
 
       - name: Validate changelog section
         if: inputs.changelog-file != ''
