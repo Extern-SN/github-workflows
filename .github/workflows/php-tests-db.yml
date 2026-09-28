@@ -3,6 +3,17 @@ name: PHP Tests (with database)
 on:
   workflow_call:
     inputs:
+      runner:
+        description: >
+          Labels du runner au format JSON, par exemple ["self-hosted","linux"],
+          ou une chaîne JSON pour un runner unique : "ubuntu-22.04".
+          Le défaut cible le runner self-hosted du Groupe : le quota GitHub
+          Actions de l'organisation est épuisé, et les dépôts appelants
+          basculent sans rien modifier chez eux. Passer '"ubuntu-22.04"'
+          (guillemets simples ET doubles) pour forcer un runner GitHub-hosted.
+        type: string
+        required: false
+        default: '["self-hosted","Linux","X64","ovh-ppr"]'
       php-version:
         type: string
         required: true
@@ -50,9 +61,15 @@ on:
 jobs:
   phpunit:
     name: PHPUnit (db)
-    runs-on: ubuntu-22.04
+    runs-on: ${{ fromJSON(inputs.runner) }}
     timeout-minutes: 20
 
+    # Les "services:" sont démarrés par le runner lui-même, avant le premier
+    # pas du job : ils exigent donc un Docker fonctionnel sur la machine, et
+    # aucune étape du job ne peut le vérifier avant eux. Sur un runner
+    # self-hosted sans Docker, le job échoue à l'initialisation, avant tout log
+    # exploitable. Prérequis documenté dans le README ; à défaut, appeler ce
+    # workflow avec runner: '"ubuntu-22.04"'.
     services:
       database:
         # L'image du service est choisie par le dépôt appelant (db-image) : ce

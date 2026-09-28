@@ -28,6 +28,11 @@ jobs:
       pull-requests: write
     uses: ./.github/workflows/validate-pr-labelled.yml  # zizmor: ignore[self-repository]
     with:
+      # Ce dépôt est public : ses propres runs restent sur un runner
+      # GitHub-hosted, gratuit ici, et surtout jamais sur le runner self-hosted
+      # du Groupe, qu'une PR de fork ferait exécuter du code non relu.
+      # Le guillemet double est requis : "runner" est déplié par fromJSON.
+      runner: '"ubuntu-22.04"'
       # Ce dépôt n'a pas de branche d'intégration : la règle de nommage
       # s'applique à toutes ses PR, pas seulement à celles vers "dev".
       enforce-naming-on-base: '*'
