@@ -40,6 +40,17 @@ name: Validate PR (label posé)
 on:
   workflow_call:
     inputs:
+      runner:
+        description: >
+          Labels du runner au format JSON, par exemple ["self-hosted","linux"],
+          ou une chaîne JSON pour un runner unique : "ubuntu-22.04".
+          Le défaut cible le runner self-hosted du Groupe : le quota GitHub
+          Actions de l'organisation est limité, et les dépôts appelants
+          basculent sans rien modifier chez eux. Passer '"ubuntu-22.04"'
+          (guillemets simples ET doubles) pour forcer un runner GitHub-hosted.
+        type: string
+        required: false
+        default: '["self-hosted","Linux","X64","ovh-ppr"]'
       enforce-naming-on-base:
         description: 'Transmis à validate-pr.yml'
         type: string
@@ -92,6 +103,7 @@ jobs:
       pull-requests: write
     uses: ./.github/workflows/auto-label.yml  # zizmor: ignore[self-repository]
     with:
+      runner: ${{ inputs.runner }}
       prefix-map: ${{ inputs.prefix-map }}
       integration-branch: ${{ inputs.integration-branch }}
       label-ranking: ${{ inputs.label-ranking }}
@@ -107,6 +119,7 @@ jobs:
       pull-requests: read
     uses: ./.github/workflows/validate-pr.yml  # zizmor: ignore[self-repository]
     with:
+      runner: ${{ inputs.runner }}
       enforce-naming-on-base: ${{ inputs.enforce-naming-on-base }}
       branch-pattern: ${{ inputs.branch-pattern }}
       enforce-naming-on-bots: ${{ inputs.enforce-naming-on-bots }}

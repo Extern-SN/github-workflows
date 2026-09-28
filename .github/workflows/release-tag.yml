@@ -30,6 +30,17 @@ name: Release Tag
 on:
   workflow_call:
     inputs:
+      runner:
+        description: >
+          Labels du runner au format JSON, par exemple ["self-hosted","linux"],
+          ou une chaîne JSON pour un runner unique : "ubuntu-22.04".
+          Le défaut cible le runner self-hosted du Groupe : le quota GitHub
+          Actions de l'organisation est limité, et les dépôts appelants
+          basculent sans rien modifier chez eux. Passer '"ubuntu-22.04"'
+          (guillemets simples ET doubles) pour forcer un runner GitHub-hosted.
+        type: string
+        required: false
+        default: '["self-hosted","Linux","X64","ovh-ppr"]'
       docker-workflow-file:
         description: >
           Fichier du workflow à déclencher via workflow_dispatch après la création
@@ -77,13 +88,29 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ fromJSON(inputs.runner) }}
     permissions:
       contents: write       # pour créer et pousser le tag Git et le commit de changelog
       pull-requests: read   # pour lire les labels de la PR mergée
       actions: write        # pour déclencher docker-workflow-file via workflow_dispatch
 
     steps:
+      # Un runner self-hosted ne garantit aucun outil préinstallé, contrairement
+      # aux images GitHub-hosted, et un job n'a pas à installer quoi que ce soit
+      # au niveau système sur une machine partagée (pas de "sudo apt-get" ici).
+      # Un message explicite vaut mieux qu'un "command not found" plus loin.
+      - name: Vérifie les outils attendus
+        run: |
+          manquants=""
+          for outil in gh git; do
+            command -v "$outil" >/dev/null 2>&1 || manquants="$manquants $outil"
+          done
+          if [ -n "$manquants" ]; then
+            echo "::error title=Outils manquants sur le runner::Absents :$manquants. Les installer sur le runner self-hosted, ou appeler ce workflow avec runner: '\"ubuntu-22.04\"'."
+            exit 1
+          fi
+          echo "Outils présents : gh git."
+
       - name: Checkout repository
         uses: actions/checkout@v7
         with:

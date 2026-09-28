@@ -3,6 +3,17 @@ name: Docker Build & Push
 on:
   workflow_call:
     inputs:
+      runner:
+        description: >
+          Labels du runner au format JSON, par exemple ["self-hosted","linux"],
+          ou une chaîne JSON pour un runner unique : "ubuntu-22.04".
+          Le défaut cible le runner self-hosted du Groupe : le quota GitHub
+          Actions de l'organisation est limité, et les dépôts appelants
+          basculent sans rien modifier chez eux. Passer '"ubuntu-22.04"'
+          (guillemets simples ET doubles) pour forcer un runner GitHub-hosted.
+        type: string
+        required: false
+        default: '["self-hosted","Linux","X64","ovh-ppr"]'
       registry:
         description: 'Container registry (docker.io, ghcr.io, ...)'
         type: string
@@ -63,10 +74,26 @@ on:
 jobs:
   docker:
     name: Build Docker Image
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(inputs.runner) }}
     timeout-minutes: 30
 
     steps:
+      # Un runner self-hosted ne garantit aucun outil préinstallé, contrairement
+      # aux images GitHub-hosted, et un job n'a pas à installer quoi que ce soit
+      # au niveau système sur une machine partagée (pas de "sudo apt-get" ici).
+      # Un message explicite vaut mieux qu'un "command not found" plus loin.
+      - name: Vérifie les outils attendus
+        run: |
+          manquants=""
+          for outil in docker; do
+            command -v "$outil" >/dev/null 2>&1 || manquants="$manquants $outil"
+          done
+          if [ -n "$manquants" ]; then
+            echo "::error title=Outils manquants sur le runner::Absents :$manquants. Les installer sur le runner self-hosted, ou appeler ce workflow avec runner: '\"ubuntu-22.04\"'."
+            exit 1
+          fi
+          echo "Outils présents : docker."
+
       - name: Checkout
         uses: actions/checkout@v7
         with:
@@ -77,13 +104,31 @@ jobs:
       # plusieurs minutes, et l'echec ne ressemble en rien a un probleme de
       # place : il se presente comme "failed to analyze layer".
       # Constate le 2026-09-17 sur une image volumineuse du parc.
+      #
+      # Réservé aux runners GitHub-hosted : ces chemins (dotnet, android, ghc)
+      # n'existent que dans leurs images, la machine y est jetable, et le "sudo"
+      # y est accordé. Sur un runner self-hosted, la même étape effacerait des
+      # dossiers système d'une machine partagée et durable, et échouerait de
+      # toute façon faute de droit root. "runner.environment" vaut
+      # "github-hosted" ou "self-hosted" et est fourni par GitHub.
       - name: Free disk space
-        if: inputs.free-disk-space
+        if: inputs.free-disk-space && runner.environment == 'github-hosted'
         run: |
           echo "Avant :"; df -h / | tail -1
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
                       /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
           sudo docker image prune -af || true
+          echo "Apres :"; df -h / | tail -1
+
+      # Équivalent sans root pour un runner self-hosted : on ne touche à aucun
+      # dossier système, on ne rend que ce que Docker a accumulé, ce qui est
+      # justement ce qui remplit le disque au fil des builds.
+      - name: Free disk space (self-hosted)
+        if: inputs.free-disk-space && runner.environment != 'github-hosted'
+        run: |
+          echo "Avant :"; df -h / | tail -1
+          docker image prune -af || true
+          docker builder prune -af || true
           echo "Apres :"; df -h / | tail -1
 
       - name: Set up Docker Buildx

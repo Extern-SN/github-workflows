@@ -35,6 +35,17 @@ name: CI Security
 on:
   workflow_call:
     inputs:
+      runner:
+        description: >
+          Labels du runner au format JSON, par exemple ["self-hosted","linux"],
+          ou une chaîne JSON pour un runner unique : "ubuntu-22.04".
+          Le défaut cible le runner self-hosted du Groupe : le quota GitHub
+          Actions de l'organisation est limité, et les dépôts appelants
+          basculent sans rien modifier chez eux. Passer '"ubuntu-22.04"'
+          (guillemets simples ET doubles) pour forcer un runner GitHub-hosted.
+        type: string
+        required: false
+        default: '["self-hosted","Linux","X64","ovh-ppr"]'
       min-severity:
         description: >
           Sévérité zizmor à partir de laquelle le job échoue.
@@ -70,7 +81,7 @@ permissions:
 jobs:
   security:
     name: Audit des workflows
-    runs-on: ubuntu-22.04
+    runs-on: ${{ fromJSON(inputs.runner) }}
     permissions:
       contents: read
 
@@ -80,17 +91,43 @@ jobs:
         with:
           persist-credentials: false
 
+      # Outils attendus sur le runner. Un runner self-hosted n'est pas une
+      # image GitHub-hosted : rien n'y est garanti préinstallé, et le job n'a
+      # pas le droit d'installer quoi que ce soit au niveau système (aucun
+      # "sudo apt-get" ici, un runner partagé ne se modifie pas depuis un job).
+      # Mieux vaut un message explicite qu'un "command not found" à l'étape
+      # suivante.
+      - name: Vérifie les outils attendus
+        run: |
+          manquants=""
+          for outil in curl tar shellcheck python3; do
+            command -v "$outil" >/dev/null 2>&1 || manquants="$manquants $outil"
+          done
+          if [ -n "$manquants" ]; then
+            echo "::error title=Outils manquants sur le runner::Absents :$manquants. Les installer sur le runner self-hosted, ou appeler ce workflow avec runner: '\"ubuntu-22.04\"'."
+            exit 1
+          fi
+          echo "Outils présents : curl, tar, shellcheck, python3."
+
       # Binaire officiel récupéré par version explicite plutôt que par une
       # action tierce : une dépendance de moins dans la chaîne.
+      #
+      # Installé dans $RUNNER_TEMP, pas dans /usr/local/bin : l'ancien "sudo mv"
+      # supposait le droit root, que les runners GitHub-hosted accordent et
+      # qu'un runner self-hosted n'a aucune raison de donner à un job. Le
+      # dossier est ajouté au PATH par $GITHUB_PATH, et $RUNNER_TEMP étant
+      # propre à chaque job, deux runs concurrents sur la même machine ne se
+      # marchent pas dessus.
       - name: Install actionlint
         env:
           VERSION: ${{ inputs.actionlint-version }}
         run: |
-          curl -sSLo actionlint.tar.gz \
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -sSLo "$RUNNER_TEMP/actionlint.tar.gz" \
             "https://github.com/rhysd/actionlint/releases/download/v${VERSION}/actionlint_${VERSION}_linux_amd64.tar.gz"
-          tar -xzf actionlint.tar.gz actionlint
-          sudo mv actionlint /usr/local/bin/
-          actionlint --version
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/bin" actionlint
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/bin/actionlint" --version
 
       # continue-on-error sur les deux outils : ils doivent tourner tous les deux,
       # quel que soit le résultat de l'autre. Le verdict est rendu à la fin.
@@ -101,9 +138,29 @@ jobs:
           SHELLCHECK_SEVERITY: ${{ inputs.shellcheck-min-severity }}
         run: actionlint -color -shellcheck "shellcheck -S $SHELLCHECK_SEVERITY"
 
+      # pipx s'il est là, sinon "pip install --user", qui n'exige pas plus de
+      # droits : l'ancien "pipx install" sec supposait pipx préinstallé, ce que
+      # seules les images GitHub-hosted garantissent. Le dossier des binaires
+      # utilisateur n'est pas toujours dans le PATH d'un runner self-hosted :
+      # on l'y ajoute explicitement.
       - name: Install zizmor
         run: |
-          pipx install zizmor
+          if command -v pipx >/dev/null 2>&1; then
+            pipx install zizmor
+            pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH" 2>/dev/null \
+              || echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          elif command -v pip3 >/dev/null 2>&1 || python3 -m pip --version >/dev/null 2>&1; then
+            python3 -m pip install --user --upgrade zizmor
+            echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
+          else
+            echo "::error title=pip absent::Ni pipx ni pip ne sont disponibles sur le runner. Installer python3-pip sur le runner self-hosted, ou appeler ce workflow avec runner: '\"ubuntu-22.04\"'."
+            exit 1
+          fi
+          # $GITHUB_PATH ne prend effet qu'à l'étape suivante : pour appeler
+          # zizmor ici même, on étend le PATH de ce shell. Déclaration et
+          # affectation séparées (shellcheck SC2155).
+          user_base=$(python3 -m site --user-base 2>/dev/null || echo "$HOME/.local")
+          export PATH="$user_base/bin:$HOME/.local/bin:$PATH"
           zizmor --version
 
       - name: Run zizmor

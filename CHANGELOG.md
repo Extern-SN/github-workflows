@@ -15,6 +15,48 @@ au 2026-09-14.
 
 ## [Non publié]
 
+## [v1.7.0] - 2026-09-28
+
+### Ajouté
+
+- Tous les workflows réutilisables acceptent une entrée `runner`, dépliée par
+  `fromJSON`, dont le défaut cible le runner self-hosted du Groupe
+  (`["self-hosted","Linux","X64","ovh-ppr"]`). Le quota GitHub Actions de
+  l'organisation étant limité, les dépôts appelants basculent au
+  déplacement du tag `v1`, sans modification chez eux. Passer
+  `runner: '"ubuntu-22.04"'` force un runner GitHub-hosted.
+
+- Chaque workflow vérifie la présence des outils dont il a besoin (`gh`, `git`,
+  `docker`, `shellcheck`, `python3`) et échoue avec un message nommant ce qui
+  manque, plutôt que sur un `command not found` en cours de job. Un runner
+  self-hosted ne garantit rien de préinstallé, contrairement aux images
+  GitHub-hosted.
+
+### Modifié
+
+- `ci-security.yml` n'exige plus de droit root : actionlint est installé dans
+  `$RUNNER_TEMP/bin` ajouté à `$GITHUB_PATH` au lieu d'un `sudo mv` vers
+  `/usr/local/bin`, et zizmor via `pipx` s'il est présent, sinon
+  `pip install --user`. L'ancien `pipx install` sec supposait pipx préinstallé,
+  ce que seules les images GitHub-hosted garantissent.
+
+- `docker-build.yml` : l'option `free-disk-space` ne lance ses `sudo rm` de
+  `/usr/share/dotnet`, `/usr/local/lib/android` et `/opt/ghc` que sur un runner
+  GitHub-hosted (`runner.environment`). Ces chemins n'existent que dans leurs
+  images, et effacer des dossiers système d'une machine partagée et durable n'a
+  pas le même sens qu'effacer ceux d'une VM jetable. Sur self-hosted, un
+  `docker image prune` / `builder prune` rend la place sans toucher au système.
+
+### Sécurité
+
+- `ci.yml`, `self-pr.yml` et `self-release.yml` — les workflows propres à ce
+  dépôt **public** — restent sur `ubuntu-22.04` et passent explicitement
+  `runner: '"ubuntu-22.04"'` à leurs appels internes : un runner self-hosted ne
+  doit jamais exécuter le code d'une PR venant d'un fork. Le groupe de runners
+  de l'organisation n'autorise d'ailleurs pas les dépôts publics
+  (`allows_public_repositories: false`). Les dépôts appelants du parc sont tous
+  privés et ne sont pas concernés.
+
 ## [v1.6.0] - 2026-09-18
 
 ### Ajouté
