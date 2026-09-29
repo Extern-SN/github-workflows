@@ -15,6 +15,33 @@ au 2026-09-14.
 
 ## [Non publié]
 
+## [v1.8.0] - 2026-09-29
+
+### Modifié
+
+- Le défaut de l'entrée `runner` de tous les workflows réutilisables lit la
+  variable d'organisation `CI_RUNNER_LABELS`, et se rabat sur
+  `["self-hosted","Linux","X64","ovh-ppr"]` si elle est absente. Basculer tout
+  le parc entre runner self-hosted et GitHub-hosted devient une commande
+  (`gh variable set CI_RUNNER_LABELS --org Extern-SN ...`), sans commit ni
+  déplacement de tag. Une variable de dépôt du même nom surcharge celle de
+  l'organisation pour un seul dépôt. Comportement inchangé à la publication :
+  la variable vaut le défaut précédent.
+
+- `ci-security.yml` : l'installation de zizmor par `pip install --user`
+  retente avec `--break-system-packages` quand le Python système est protégé
+  par la PEP 668 (Debian 12, Ubuntu 23.04+), au lieu d'échouer sur un runner
+  self-hosted sans pipx.
+
+### Documentation
+
+- README, section "Choix du runner" : procédure de bascule, surcharge par
+  dépôt, repli, motif matrice pour les jobs écrits directement dans un dépôt
+  (le contexte `vars` est refusé dans `runs-on`), absence de repli automatique.
+- README, "Triggers recommandés" : filtre des changements de documentation
+  (`**/*.md`, `docs/**`, `badges/**`, `LICENSE`) et `concurrency` pour les
+  workflows de validation, avec les workflows à ne pas filtrer.
+
 ## [v1.7.0] - 2026-09-28
 
 ### Ajouté
