@@ -72,7 +72,7 @@ un accès au cluster. Déclarer le tag dans les manifestes reste la vraie répon
 
 ## Ce qu'une purge de tags ne règle pas
 
-Mesuré sur `ndiasexternit/wordpress-direxi`, en deux temps.
+Mesuré sur un dépôt Docker Hub du parc, en deux temps.
 
 | Opération | Tags | `storage_size` |
 |---|---|---|

@@ -522,7 +522,7 @@ jobs:
       issues: write
     uses: Extern-SN/github-workflows/.github/workflows/debt-report.yml@v1
     with:
-      stack: PHP 7.2-apache
+      stack: PHP 5.6
       motif: >
         Debian buster est EOL, ses dépôts APT sont servis depuis l'archive.
         Le scan Trivy est désactivé dans docker-build.yml, il échouerait

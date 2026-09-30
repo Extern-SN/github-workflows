@@ -25,6 +25,10 @@ au 2026-09-14.
   runs) ; ce qui est refusé est l'appel `fromJSON(vars....)` à cet endroit.
   Le motif matrice du parc reste inchangé : la valeur est une liste de labels,
   qu'un `vars` nu ne sait pas porter.
+- Discrétion du dépôt public, suite : les exemples de `stack` de
+  `debt-report.yml` et du README ne reprennent plus une stack réelle du parc,
+  et les commentaires de `docker-build.yml` et du README des scripts de
+  registre ne nomment plus de dépôt privé.
 
 ## [v1.8.1] - 2026-09-30
 

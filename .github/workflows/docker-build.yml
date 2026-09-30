@@ -103,7 +103,7 @@ jobs:
       # image volumineuse, le scan echoue sur "no space left on device" apres
       # plusieurs minutes, et l'echec ne ressemble en rien a un probleme de
       # place : il se presente comme "failed to analyze layer".
-      # Constate le 2026-09-17 sur ExternIT-repo/arbs-odoo, image Odoo 18.
+      # Constate le 2026-09-17 sur une image volumineuse du parc.
       #
       # Réservé aux runners GitHub-hosted : ces chemins (dotnet, android, ghc)
       # n'existent que dans leurs images, la machine y est jetable, et le "sudo"
