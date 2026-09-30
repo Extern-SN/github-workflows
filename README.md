@@ -688,10 +688,15 @@ La valeur est dépliée par `fromJSON`, ce qui autorise les deux formes :
 ### Jobs écrits directement dans un dépôt
 
 Un job qui n'appelle pas ce kit ne peut pas écrire
-`runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS) }}` : **GitHub refuse le contexte
-`vars` dans `runs-on`**, et le workflow entier est rejeté (aucun job créé,
-"workflow file issue"). Il l'accepte en revanche dans `strategy`, et `runs-on`
-accepte `matrix`. Le motif du parc est donc une matrice à une valeur :
+`runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS) }}` : **GitHub refuse l'appel
+`fromJSON(vars....)` dans `runs-on`**, et le workflow entier est rejeté (aucun
+job créé, "workflow file issue"). Contrairement à ce qu'affirmait une version
+précédente de cette page, le contexte `vars` y est bien disponible, comme le
+dit la table officielle des contextes : `runs-on: ${{ vars.X }}` et
+`runs-on: ${{ vars.X || 'un-label' }}` fonctionnent (vérifié par de vrais runs
+le 2026-09-30), mais un `vars` nu ne porte qu'un label unique, pas la liste de
+labels de ce parc. `fromJSON` reste accepté sur `inputs` et sur `matrix` dans
+`runs-on`. Le motif du parc est donc une matrice à une valeur :
 
 ```yaml
 jobs:
