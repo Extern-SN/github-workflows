@@ -20,7 +20,7 @@ Seule la série `v1` reçoit des correctifs. Les dépôts consommateurs appellen
 suit la dernière version `v1.x.y` publiée.
 
 Un appel en `@main` n'est pas supporté : il expose le dépôt appelant à un
-changement non publié, et il est signalé comme non conforme par l'audit SDU.
+changement non publié, et il est signalé comme non conforme par l'audit interne.
 
 ## Ce que la chaîne garantit, et ce qu'elle ne garantit pas
 
@@ -31,5 +31,5 @@ appelant. Il contrôle l'écriture des workflows, pas le code applicatif.
 s'exécute réellement que si le dépôt fournit les entrées attendues : un job vert
 sur un dépôt mal configuré ne vaut pas attestation d'absence de vulnérabilité.
 
-Le contrôle des secrets commités relève de l'audit SDU interne, pas de
+Le contrôle des secrets commités relève de l'audit interne, pas de
 cette chaîne.

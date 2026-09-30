@@ -241,7 +241,7 @@ jobs:
           #
           # C'est la sortie du défaut qui a coûté quatre publications manuelles
           # le 2026-09-18 : la promotion poussait un commit sur la branche par
-          # défaut, ce qu'une branche protégée refuse, et le SDU amène chaque
+          # défaut, ce qu'une branche protégée refuse, et l'audit interne amène chaque
           # dépôt à protéger la sienne.
           if grep -q "^## \[$NEXT_TAG\]" "$CHANGELOG"; then
             echo "$CHANGELOG porte déjà la section $NEXT_TAG : rien à promouvoir."

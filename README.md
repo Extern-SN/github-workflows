@@ -46,7 +46,7 @@ chiffre à incrémenter.
 
 > **Pourquoi ce n'est pas facultatif.** `auto-label.yml` s'en sort sans, l'API GitHub
 > créant le label au moment de le poser. **Dependabot, lui, ignore un label absent** :
-> sa PR arrive sans label et `validate-pr` la refuse. Le kit SDU posant
+> sa PR arrive sans label et `validate-pr` la refuse. Le kit de remédiation posant
 > `dependabot.yml` en même temps que `validate-pr`, tout dépôt qui adopte la chaîne
 > sans ses labels verra rougir ses PR de mise à jour de dépendance. Vérifié à l'API le
 > 2026-09-18 sur six dépôts du parc : tous n'avaient que `feature`.
@@ -306,7 +306,7 @@ quel numéro écrire. Au merge, `release-tag.yml` trouve la section déjà là :
 promeut rien, **ne pousse rien**, et se contente de taguer et publier.
 
 C'est le seul mode qui fonctionne sur un dépôt dont la branche par défaut exige une
-PR, ce que la conformité SDU amène chaque dépôt à faire. Le 2026-09-18, le mode
+PR, ce que l'audit interne amène chaque dépôt à faire. Le 2026-09-18, le mode
 historique a coûté quatre publications manuelles au dépôt socle, chacune passant par
 une PR de deux lignes.
 
@@ -381,7 +381,7 @@ jobs:
 
 > **Les PR d'automates échappent à la règle de nommage.** Dependabot et Renovate
 > nomment leurs branches eux-mêmes (`dependabot/github_actions/...`) et ne se
-> configurent pas sur ce point. Comme le kit SDU pose `dependabot.yml` en même
+> configurent pas sur ce point. Comme le kit de remédiation pose `dependabot.yml` en même
 > temps que ce contrôle, toute PR de mise à jour partait rouge pour un nom que
 > personne ne peut changer. Le **label de release reste exigé** : le poser revient
 > à la configuration de l'automate, par exemple `labels: ["chore"]` dans
@@ -530,7 +530,7 @@ jobs:
       echeance: Montée en PHP 8.3 à planifier, non arbitrée à ce jour.
 ```
 
-Le SDU rend ce workflow **obligatoire dès qu'une stack est LEGACY ou EOL**. La
+Le référentiel d'audit interne rend ce workflow **obligatoire dès qu'une stack est LEGACY ou EOL**. La
 logique du référentiel mérite d'être comprise avant d'être appliquée : un projet
 EOL n'est pas pénalisé parce qu'il est vieux, il l'est parce qu'il est vieux
 **sans être traité comme tel**. Le traitement attendu tient en deux choses,
@@ -551,8 +551,8 @@ issue. Ne pas cloner évite de laisser un jeton dans le répertoire de travail.
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
 | `runner` | string | variable d'org `CI_RUNNER_LABELS` | [Runner d'exécution](#choix-du-runner-entrée-runner). Ne pas passer (sauf dépôt public) |
-| `stack` | string | — | Stack concernée, nommée comme au référentiel SDU |
-| `statut` | string | `EOL` | Statut SDU de la stack : `EOL` ou `LEGACY` |
+| `stack` | string | — | Stack concernée, nommée comme au référentiel d'audit |
+| `statut` | string | `EOL` | Statut de la stack au référentiel : `EOL` ou `LEGACY` |
 | `motif` | string | `` | Ce qui bloque ou ce que la situation impose |
 | `echeance` | string | `` | Échéance de sortie de dette, si elle est arbitrée |
 | `label` | string | `dette-technique` | Label posé sur l'issue, créé s'il manque. Vide pour aucun label |

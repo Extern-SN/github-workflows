@@ -106,7 +106,7 @@ jobs:
       #
       # Les PR d'automates sont hors de cette règle par défaut : Dependabot et
       # Renovate nomment leurs branches eux-mêmes et ne se configurent pas sur ce
-      # point. Comme le kit SDU pose "dependabot.yml" en même temps que ce
+      # point. Comme le kit de remédiation pose "dependabot.yml" en même temps que ce
       # contrôle, toute PR de mise à jour de dépendance partait rouge pour un
       # nom que personne ne peut changer (constaté le 2026-09-18 sur les trois
       # premières PR Dependabot du dépôt socle). Le type d'auteur vient de

@@ -15,7 +15,7 @@
 #
 # auto-label.yml s'en sortait, l'API GitHub creant le label au moment de le
 # poser. Dependabot, lui, IGNORE un label absent : la PR arrive sans label, et
-# validate-pr la refuse. Le kit SDU posant dependabot.yml en meme temps que
+# validate-pr la refuse. Le kit de remédiation posant dependabot.yml en meme temps que
 # validate-pr, chaque depot qui adopte la chaine rejoue la meme sequence.
 #
 # Le script est idempotent : un label deja present est laisse tel quel, sa

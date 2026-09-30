@@ -28,7 +28,8 @@ au 2026-09-14.
 - Discrétion du dépôt public, suite : les exemples de `stack` de
   `debt-report.yml` et du README ne reprennent plus une stack réelle du parc,
   et les commentaires de `docker-build.yml` et du README des scripts de
-  registre ne nomment plus de dépôt privé.
+  registre ne nomment plus de dépôt privé, et le nom du référentiel d'audit
+  interne n'apparaît plus (« audit interne » suffit au lecteur public).
 
 ## [v1.8.1] - 2026-09-30
 
@@ -178,7 +179,7 @@ au 2026-09-14.
 - `validate-pr.yml` : les PR d'automates échappent à la règle de nommage de
   branche, par la nouvelle entrée `enforce-naming-on-bots` (défaut `false`).
   Dependabot nomme ses branches `dependabot/github_actions/...` et ne se
-  configure pas sur ce point ; le kit SDU posant `dependabot.yml` en même temps
+  configure pas sur ce point ; le kit de remédiation posant `dependabot.yml` en même temps
   que ce contrôle, toute PR de mise à jour de dépendance partait rouge pour un
   nom que personne ne peut changer. Le label de release reste exigé.
 
