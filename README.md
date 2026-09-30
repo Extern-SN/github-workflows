@@ -822,7 +822,7 @@ Ne pas mettre ce filtre sur :
   changelog), utile aussi pour une PR de documentation ;
 - `release-tag`, `deploy-*`, `cleanup-dev`, les déclenchements planifiés ;
 - un dépôt dont la documentation est vérifiée en CI (ce dépôt, dont le job
-  `contrat` contrôle le README ; `sdu-audit`, dont la documentation est
+  `contrat` contrôle le README ; ou un dépôt dont la documentation est
   générée).
 
 Ni `concurrency` sur `release-tag` et `deploy-*` : annuler une publication en

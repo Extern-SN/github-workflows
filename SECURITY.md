@@ -31,5 +31,5 @@ appelant. Il contrôle l'écriture des workflows, pas le code applicatif.
 s'exécute réellement que si le dépôt fournit les entrées attendues : un job vert
 sur un dépôt mal configuré ne vaut pas attestation d'absence de vulnérabilité.
 
-Le contrôle des secrets commités relève de l'audit SDU (`sdu-audit`), pas de
+Le contrôle des secrets commités relève de l'audit SDU interne, pas de
 cette chaîne.
