@@ -15,6 +15,16 @@ au 2026-09-14.
 
 ## [Non publié]
 
+## [v1.8.1] - 2026-09-30
+
+### Modifié
+
+- README et CHANGELOG : retrait des informations d'exploitation interne
+  (état du quota de l'organisation, référence au dépôt d'infrastructure et à
+  sa documentation, commande d'état du parc de runners). Ce dépôt est public :
+  il documente le mécanisme, pas la situation du parc. L'exploitation du
+  runner self-hosted est documentée en interne.
+
 ## [v1.8.0] - 2026-09-29
 
 ### Modifié
@@ -48,9 +58,8 @@ au 2026-09-14.
 
 - Tous les workflows réutilisables acceptent une entrée `runner`, dépliée par
   `fromJSON`, dont le défaut cible le runner self-hosted du Groupe
-  (`["self-hosted","Linux","X64","ovh-ppr"]`). Le quota GitHub Actions de
-  l'organisation (2000 min) étant épuisé, les dépôts appelants basculent au
-  déplacement du tag `v1`, sans modification chez eux. Passer
+  (`["self-hosted","Linux","X64","ovh-ppr"]`). Les dépôts appelants basculent
+  au déplacement du tag `v1`, sans modification chez eux. Passer
   `runner: '"ubuntu-22.04"'` force un runner GitHub-hosted.
 
 - Chaque workflow vérifie la présence des outils dont il a besoin (`gh`, `git`,

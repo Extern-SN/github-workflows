@@ -3,10 +3,9 @@
 Workflows GitHub Actions réutilisables pour tous les services Extern SN.
 
 > **Le runner de tout le parc se choisit à un seul endroit : la variable
-> d'organisation `CI_RUNNER_LABELS`** (depuis `v1.8.0`). Elle cible aujourd'hui
-> le runner self-hosted du Groupe, le quota GitHub Actions de l'organisation
-> étant épuisé. Basculer tout le parc, c'est une commande, sans aucun commit.
-> Voir [Choix du runner](#choix-du-runner-entrée-runner).
+> d'organisation `CI_RUNNER_LABELS`** (depuis `v1.8.0`). Basculer tout le parc
+> entre runner self-hosted et GitHub-hosted, c'est une commande, sans aucun
+> commit. Voir [Choix du runner](#choix-du-runner-entrée-runner).
 
 ## Workflows disponibles
 
@@ -635,10 +634,10 @@ visibilité : tous les dépôts). Changer sa valeur change le runner de tous les
 jobs du parc au run suivant, **sans commit ni déplacement de tag** :
 
 ```bash
-# Tout le parc sur GitHub-hosted (quota disponible)
+# Tout le parc sur GitHub-hosted
 gh variable set CI_RUNNER_LABELS --org Extern-SN --visibility all --body '"ubuntu-22.04"'
 
-# Tout le parc sur le runner self-hosted du Groupe (situation au 2026-09-29)
+# Tout le parc sur le runner self-hosted du Groupe
 gh variable set CI_RUNNER_LABELS --org Extern-SN --visibility all --body '["self-hosted","Linux","X64","ovh-ppr"]'
 
 # Valeur en cours
@@ -717,9 +716,8 @@ hors ligne reste en file d'attente. La bascule est donc manuelle, mais tient en
 une commande. Si le runner self-hosted tombe alors que le quota est épuisé,
 aucune bascule ne sauve la CI.
 
-État du runner : `gh api orgs/Extern-SN/actions/runners --jq '.runners[] | [.name, .status, .busy] | @tsv'`.
-Côté infrastructure (cluster, redémarrage), voir
-`Extern-SN/kubernetes-infrastructure`, `docs/exploitation-ci-runners.md`.
+L'exploitation du runner self-hosted (hébergement, état, redémarrage,
+réenregistrement) est documentée en interne, hors de ce dépôt public.
 
 ### Prérequis du runner self-hosted
 
