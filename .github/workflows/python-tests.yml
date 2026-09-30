@@ -7,13 +7,13 @@ on:
         description: >
           Labels du runner au format JSON, par exemple ["self-hosted","linux"],
           ou une chaîne JSON pour un runner unique : "ubuntu-22.04".
-          Le défaut cible le runner self-hosted du Groupe : le quota GitHub
-          Actions de l'organisation est limité, et les dépôts appelants
-          basculent sans rien modifier chez eux. Passer '"ubuntu-22.04"'
-          (guillemets simples ET doubles) pour forcer un runner GitHub-hosted.
+          Ne pas la passer : le défaut lit la variable d'organisation
+          CI_RUNNER_LABELS, point unique de bascule du parc (README, section
+          "Choix du runner"), et se rabat sur le runner self-hosted du Groupe
+          si elle est absente. La passer court-circuite cette variable.
         type: string
         required: false
-        default: '["self-hosted","Linux","X64","ovh-ppr"]'
+        default: ${{ vars.CI_RUNNER_LABELS || '["self-hosted","Linux","X64","ovh-ppr"]' }}
       python-version:
         type: string
         default: '3.12'

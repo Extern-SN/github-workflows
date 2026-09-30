@@ -2,11 +2,11 @@
 
 Workflows GitHub Actions réutilisables pour tous les services Extern SN.
 
-> **Depuis `v1.7.0`, tous ces workflows s'exécutent par défaut sur le runner
-> self-hosted du Groupe**, le quota GitHub Actions de l'organisation étant
-> limité. Aucune modification n'est requise dans les dépôts appelants. Voir
-> [Choix du runner](#choix-du-runner-entrée-runner) pour forcer un runner
-> GitHub-hosted ou connaître les prérequis de la machine.
+> **Le runner de tout le parc se choisit à un seul endroit : la variable
+> d'organisation `CI_RUNNER_LABELS`** (depuis `v1.8.0`). Elle cible aujourd'hui
+> le runner self-hosted du Groupe, le quota GitHub Actions de l'organisation
+> étant limité. Basculer tout le parc, c'est une commande, sans aucun commit.
+> Voir [Choix du runner](#choix-du-runner-entrée-runner).
 
 ## Workflows disponibles
 
@@ -82,7 +82,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
+| `runner` | string | variable d'org `CI_RUNNER_LABELS` | [Runner d'exécution](#choix-du-runner-entrée-runner). Ne pas passer (sauf dépôt public) |
 | `registry` | string | — | Registre cible |
 | `image-name` | string | — | Nom image sans registre |
 | `dockerfile` | string | `Dockerfile` | Chemin du Dockerfile |
@@ -137,7 +137,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
+| `runner` | string | variable d'org `CI_RUNNER_LABELS` | [Runner d'exécution](#choix-du-runner-entrée-runner). Ne pas passer (sauf dépôt public) |
 | `php-version` | string | — | Version PHP |
 | `extensions` | string | `mbstring, intl, xml, dom, curl, zip` | Extensions PHP installées, séparées par des virgules |
 | `install-command` | string | `composer install --prefer-dist ...` | Installation des dépendances |
@@ -169,7 +169,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
+| `runner` | string | variable d'org `CI_RUNNER_LABELS` | [Runner d'exécution](#choix-du-runner-entrée-runner). Ne pas passer (sauf dépôt public) |
 | `php-version` | string | — | Version PHP |
 | `extensions` | string | `mbstring, intl, xml, dom, curl, zip` | Extensions PHP installées |
 | `install-command` | string | `composer install --prefer-dist ...` | Installation des dépendances |
@@ -201,7 +201,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
+| `runner` | string | variable d'org `CI_RUNNER_LABELS` | [Runner d'exécution](#choix-du-runner-entrée-runner). Ne pas passer (sauf dépôt public) |
 | `php-version` | string | — | Version PHP |
 | `extensions` | string | `mbstring, intl, xml, dom, curl, zip` | Extensions PHP installées |
 | `install-command` | string | `composer install --prefer-dist ...` | Installation des dépendances |
@@ -225,7 +225,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
+| `runner` | string | variable d'org `CI_RUNNER_LABELS` | [Runner d'exécution](#choix-du-runner-entrée-runner). Ne pas passer (sauf dépôt public) |
 | `node-version` | string | `22` | Version Node |
 | `install-command` | string | `npm ci` | Installation des dépendances |
 | `test-command` | string | `npm run test:coverage` | Commande de test |
@@ -259,7 +259,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
+| `runner` | string | variable d'org `CI_RUNNER_LABELS` | [Runner d'exécution](#choix-du-runner-entrée-runner). Ne pas passer (sauf dépôt public) |
 | `python-version` | string | `3.12` | Version Python |
 | `install-command` | string | `pip install -e .[dev]` | Installation des dépendances |
 | `lint-command` | string | `` | Lint (ignoré si vide) |
@@ -292,7 +292,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
+| `runner` | string | variable d'org `CI_RUNNER_LABELS` | [Runner d'exécution](#choix-du-runner-entrée-runner). Ne pas passer (sauf dépôt public) |
 | `docker-workflow-file` | string | `docker-build.yml` | Workflow déclenché en `workflow_dispatch` après la création du tag. **Chaîne vide pour un dépôt qui ne construit pas d'image** : l'étape est sautée au lieu d'échouer sur un workflow absent |
 | `changelog-file` | string | `` | Changelog Keep a Changelog. Sa section `## [Non publié]` est promue en version datée avant le tag. Vide pour désactiver |
 | `create-release` | boolean | `false` | Publie une GitHub Release, corps repris de la section promue |
@@ -339,7 +339,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
+| `runner` | string | variable d'org `CI_RUNNER_LABELS` | [Runner d'exécution](#choix-du-runner-entrée-runner). Ne pas passer (sauf dépôt public) |
 | `enforce-naming-on-base` | string | `dev` | Branche de base sur laquelle la règle de nommage s'applique. `*` pour toutes |
 | `branch-pattern` | string | `^(feature\|fix\|hotfix)/.+$` | Motif que doit respecter la branche source |
 | `enforce-naming-on-bots` | boolean | `false` | Applique aussi la règle de nommage aux PR d'automates |
@@ -419,7 +419,7 @@ que son appelant lui accorde.
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
+| `runner` | string | variable d'org `CI_RUNNER_LABELS` | [Runner d'exécution](#choix-du-runner-entrée-runner). Ne pas passer (sauf dépôt public) |
 | `enforce-naming-on-base` | string | `dev` | Transmis à `validate-pr.yml` |
 | `branch-pattern` | string | `^(feature\|fix\|hotfix)/.+$` | Transmis à `validate-pr.yml` |
 | `enforce-naming-on-bots` | boolean | `false` | Transmis à `validate-pr.yml` |
@@ -465,7 +465,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
+| `runner` | string | variable d'org `CI_RUNNER_LABELS` | [Runner d'exécution](#choix-du-runner-entrée-runner). Ne pas passer (sauf dépôt public) |
 | `prefix-map` | string | `{"feature/": "feature", "fix/": "fix", "hotfix/": "hotfix"}` | Correspondance préfixe de branche vers label, en JSON |
 | `integration-branch` | string | `dev` | Branche dont le label se déduit des PR transportées. Vide pour désactiver |
 | `label-ranking` | string | `["breaking", "feature", "fix", "hotfix", "chore"]` | Labels de version du plus fort au plus faible |
@@ -551,7 +551,7 @@ issue. Ne pas cloner évite de laisser un jeton dans le répertoire de travail.
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
+| `runner` | string | variable d'org `CI_RUNNER_LABELS` | [Runner d'exécution](#choix-du-runner-entrée-runner). Ne pas passer (sauf dépôt public) |
 | `stack` | string | — | Stack concernée, nommée comme au référentiel d'audit interne |
 | `statut` | string | `EOL` | Statut de la stack au référentiel : `EOL` ou `LEGACY` |
 | `motif` | string | `` | Ce qui bloque ou ce que la situation impose |
@@ -603,7 +603,7 @@ qui s'exécutent dans le runner avec le jeton du dépôt.
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | [Runner d'exécution](#choix-du-runner-entrée-runner). `'"ubuntu-22.04"'` pour GitHub-hosted |
+| `runner` | string | variable d'org `CI_RUNNER_LABELS` | [Runner d'exécution](#choix-du-runner-entrée-runner). Ne pas passer (sauf dépôt public) |
 | `min-severity` | string | `high` | Sévérité zizmor à partir de laquelle le job échoue |
 | `zizmor-config` | string | `zizmor.yml` | Configuration zizmor du dépôt appelant, ignorée si absente |
 | `actionlint-version` | string | `1.7.7` | Version d'actionlint installée |
@@ -627,38 +627,99 @@ rules:
 
 ## Choix du runner (entrée `runner`)
 
-Le quota GitHub Actions de l'organisation est limité. Tous les
-workflows réutilisables de ce dépôt acceptent donc une entrée `runner` dont le
-défaut cible le runner self-hosted du Groupe : **les dépôts appelants basculent
-sans rien modifier chez eux**.
+### Le point unique de bascule : `CI_RUNNER_LABELS`
+
+Tous les workflows réutilisables de ce dépôt ont une entrée `runner` dont le
+défaut lit la **variable d'organisation `CI_RUNNER_LABELS`** (Extern-SN,
+visibilité : tous les dépôts). Changer sa valeur change le runner de tous les
+jobs du parc au run suivant, **sans commit ni déplacement de tag** :
+
+```bash
+# Tout le parc sur GitHub-hosted (quota disponible)
+gh variable set CI_RUNNER_LABELS --org Extern-SN --visibility all --body '"ubuntu-22.04"'
+
+# Tout le parc sur le runner self-hosted du Groupe
+gh variable set CI_RUNNER_LABELS --org Extern-SN --visibility all --body '["self-hosted","Linux","X64","ovh-ppr"]'
+
+# Valeur en cours
+gh variable get CI_RUNNER_LABELS --org Extern-SN
+```
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `runner` | string | `'["self-hosted","Linux","X64","ovh-ppr"]'` | Labels du runner, au format JSON |
+| `runner` | string | `vars.CI_RUNNER_LABELS`, sinon `'["self-hosted","Linux","X64","ovh-ppr"]'` | Labels du runner, au format JSON |
+
+Trois règles :
+
+1. **Un dépôt appelant ne passe pas `runner:`.** Le passer fige ce dépôt et le
+   soustrait à la bascule. Seule exception : un dépôt **public** passe
+   `runner: '"ubuntu-22.04"'` (minutes gratuites, et le groupe de runners
+   refuse les dépôts publics ; voir plus bas).
+2. **Exception pour un seul dépôt : une variable de dépôt du même nom.** Elle
+   surcharge celle de l'organisation, y compris dans les workflows de ce kit
+   (le contexte `vars` d'un workflow réutilisable est celui de l'appelant).
+   C'est aussi le moyen de tester une bascule sur un dépôt sans toucher au parc :
+
+   ```bash
+   gh variable set CI_RUNNER_LABELS -R Extern-SN/<depot> --body '"ubuntu-22.04"'
+   gh variable delete CI_RUNNER_LABELS -R Extern-SN/<depot>   # retour au parc
+   ```
+
+3. **Variable absente : repli sur le runner self-hosted**, écrit en dur dans
+   chaque défaut. La CI ne s'arrête pas si la variable est supprimée par erreur.
+
+Ces trois comportements ont été vérifiés par de vrais runs le 2026-09-29
+(tableau self-hosted, chaîne `"ubuntu-22.04"` en variable de dépôt, variable
+absente).
+
+### Format de la valeur
 
 La valeur est dépliée par `fromJSON`, ce qui autorise les deux formes :
 
-```yaml
-runner: '["self-hosted","Linux","X64","ovh-ppr"]'   # liste de labels (défaut)
-runner: '"ubuntu-22.04"'                            # runner unique
+```text
+["self-hosted","Linux","X64","ovh-ppr"]   liste de labels
+"ubuntu-22.04"                            runner unique
 ```
 
-> **Les guillemets doubles à l'intérieur des simples ne sont pas une coquille.**
-> `fromJSON` attend du JSON : `'"ubuntu-22.04"'` est la chaîne JSON
-> `"ubuntu-22.04"`. Écrire `runner: 'ubuntu-22.04'` fait échouer le job au
-> démarrage, `ubuntu-22.04` n'étant pas du JSON valide.
+> **Les guillemets doubles ne sont pas une coquille.** `fromJSON` attend du
+> JSON : `"ubuntu-22.04"` est une chaîne JSON, `ubuntu-22.04` n'en est pas une
+> et fait échouer tous les jobs au démarrage. D'où les guillemets simples
+> autour de `--body` dans les commandes ci-dessus.
 
-### Forcer un runner GitHub-hosted
+### Jobs écrits directement dans un dépôt
 
-Pour un dépôt public (minutes gratuites), ou le temps d'un diagnostic :
+Un job qui n'appelle pas ce kit ne peut pas écrire
+`runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS) }}` : **GitHub refuse le contexte
+`vars` dans `runs-on`**, et le workflow entier est rejeté (aucun job créé,
+"workflow file issue"). Il l'accepte en revanche dans `strategy`, et `runs-on`
+accepte `matrix`. Le motif du parc est donc une matrice à une valeur :
 
 ```yaml
 jobs:
-  tests:
-    uses: Extern-SN/github-workflows/.github/workflows/php-tests.yml@v1
-    with:
-      runner: '"ubuntu-22.04"'
+  lint:
+    name: ${{ matrix.runner && 'Lint' }}
+    strategy:
+      matrix:
+        runner: ["${{ vars.CI_RUNNER_LABELS || '[\"self-hosted\",\"Linux\",\"X64\",\"ovh-ppr\"]' }}"]
+    runs-on: ${{ fromJSON(matrix.runner) }}
 ```
+
+`name: ${{ matrix.runner && '...' }}` n'est pas décoratif : sans référence à
+`matrix` dans le nom, GitHub ajoute la valeur de la matrice au nom du check
+(`Lint (["self-hosted",...])`), même avec un `name:` explicite.
+
+### Ce qu'il n'y a pas : un repli automatique
+
+GitHub ne reroute pas un job. Un job envoyé sur `ubuntu-22.04` quand le quota
+est épuisé échoue ("recent account payments have failed or your spending limit
+needs to be increased") ; un job envoyé sur le runner self-hosted quand il est
+hors ligne reste en file d'attente. La bascule est donc manuelle, mais tient en
+une commande. Si le runner self-hosted tombe alors que le quota est épuisé,
+aucune bascule ne sauve la CI.
+
+L'état du runner se vérifie via la documentation d'exploitation interne.
+Côté infrastructure (cluster, redémarrage), voir
+la documentation d'exploitation interne.
 
 ### Prérequis du runner self-hosted
 
@@ -685,7 +746,9 @@ Les runtimes applicatifs (PHP, Node, Python) restent installés par les actions
 `setup-*` et n'ont pas à être présents sur la machine.
 
 Le job n'a besoin d'aucun droit root : `ci-security.yml` installe actionlint
-dans `$RUNNER_TEMP/bin` et zizmor via `pip install --user`.
+dans `$RUNNER_TEMP/bin` et zizmor via `pip install --user` (avec
+`--break-system-packages` en second essai sur un Python système protégé par la
+PEP 668, Debian 12 et Ubuntu 23.04+).
 
 ### Ce dépôt reste sur GitHub-hosted, délibérément
 
@@ -729,13 +792,40 @@ migrer.
 
 ## Triggers recommandés (éviter les doublons)
 
+Pour les workflows de **validation** (lint, tests, build d'image) :
+
 ```yaml
 on:
   pull_request:
-    paths-ignore: ['badges/**']
+    paths-ignore: ['**/*.md', 'docs/**', 'badges/**', 'LICENSE']
   push:
     branches: [main, dev]
-    paths-ignore: ['badges/**']
+    paths-ignore: ['**/*.md', 'docs/**', 'badges/**', 'LICENSE']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 ```
 
-Les badges ne sont commités que sur `push` (jamais sur `pull_request`).
+- Un changement qui ne touche que de la documentation ne lance aucun contrôle
+  de code : pas de minute consommée, pas de file d'attente sur le runner.
+- `concurrency` annule le run devenu obsolète quand un nouveau push arrive sur
+  la même branche.
+- Les badges ne sont commités que sur `push` (jamais sur `pull_request`).
+
+Ne pas mettre ce filtre sur :
+
+- `validate-pr` / `auto-label` : ils contrôlent la PR elle-même (titre, label,
+  changelog), utile aussi pour une PR de documentation ;
+- `release-tag`, `deploy-*`, `cleanup-dev`, les déclenchements planifiés ;
+- un dépôt dont la documentation est vérifiée en CI (ce dépôt, dont le job
+  `contrat` contrôle le README ; ou un dépôt dont la documentation est
+  générée).
+
+Ni `concurrency` sur `release-tag` et `deploy-*` : annuler une publication en
+cours laisserait un tag ou un déploiement à moitié fait.
+
+> Aucune vérification obligatoire n'est imposée sur les dépôts privés du parc
+> (le plan GitHub ne le permet pas). Si une protection de branche exige un jour
+> un check filtré par `paths-ignore`, les PR de documentation resteront en
+> attente de ce check : il faudra alors passer à un filtre dans le job.

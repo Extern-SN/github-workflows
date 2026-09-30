@@ -39,13 +39,13 @@ on:
         description: >
           Labels du runner au format JSON, par exemple ["self-hosted","linux"],
           ou une chaîne JSON pour un runner unique : "ubuntu-22.04".
-          Le défaut cible le runner self-hosted du Groupe : le quota GitHub
-          Actions de l'organisation est limité, et les dépôts appelants
-          basculent sans rien modifier chez eux. Passer '"ubuntu-22.04"'
-          (guillemets simples ET doubles) pour forcer un runner GitHub-hosted.
+          Ne pas la passer : le défaut lit la variable d'organisation
+          CI_RUNNER_LABELS, point unique de bascule du parc (README, section
+          "Choix du runner"), et se rabat sur le runner self-hosted du Groupe
+          si elle est absente. La passer court-circuite cette variable.
         type: string
         required: false
-        default: '["self-hosted","Linux","X64","ovh-ppr"]'
+        default: ${{ vars.CI_RUNNER_LABELS || '["self-hosted","Linux","X64","ovh-ppr"]' }}
       min-severity:
         description: >
           Sévérité zizmor à partir de laquelle le job échoue.
@@ -150,7 +150,11 @@ jobs:
             pipx environment --value PIPX_BIN_DIR >> "$GITHUB_PATH" 2>/dev/null \
               || echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           elif command -v pip3 >/dev/null 2>&1 || python3 -m pip --version >/dev/null 2>&1; then
-            python3 -m pip install --user --upgrade zizmor
+            # PEP 668 (Debian 12, Ubuntu 23.04+) refuse --user sans
+            # --break-system-packages, qu'un pip antérieur à 23.0.1 ne
+            # connaît pas : on ne l'ajoute qu'en second essai.
+            python3 -m pip install --user --upgrade zizmor \
+              || python3 -m pip install --user --break-system-packages --upgrade zizmor
             echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
           else
             echo "::error title=pip absent::Ni pipx ni pip ne sont disponibles sur le runner. Installer python3-pip sur le runner self-hosted, ou appeler ce workflow avec runner: '\"ubuntu-22.04\"'."
