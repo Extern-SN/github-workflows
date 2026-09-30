@@ -15,6 +15,22 @@ au 2026-09-14.
 
 ## [Non publié]
 
+## [v1.8.2] - 2026-09-30
+
+### Documentation
+
+- README, "Jobs écrits directement dans un dépôt" : corrige le diagnostic.
+  GitHub ne refuse pas le contexte `vars` dans `runs-on` (la table officielle
+  des contextes le liste, et un `vars` nu y fonctionne, vérifié par de vrais
+  runs) ; ce qui est refusé est l'appel `fromJSON(vars....)` à cet endroit.
+  Le motif matrice du parc reste inchangé : la valeur est une liste de labels,
+  qu'un `vars` nu ne sait pas porter.
+- Discrétion du dépôt public, suite : les exemples de `stack` de
+  `debt-report.yml` et du README ne reprennent plus une stack réelle du parc,
+  et les commentaires de `docker-build.yml` et du README des scripts de
+  registre ne nomment plus de dépôt privé, et le nom du référentiel d'audit
+  interne n'apparaît plus (« audit interne » suffit au lecteur public).
+
 ## [v1.8.1] - 2026-09-30
 
 ### Modifié
