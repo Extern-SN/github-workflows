@@ -15,6 +15,8 @@ au 2026-09-14.
 
 ## [Non publié]
 
+## [v1.8.3] - 2026-10-21
+
 ### Corrigé
 
 - `docker-build.yml` : le cache de la base Trivy passe de `~/.cache/trivy` à
