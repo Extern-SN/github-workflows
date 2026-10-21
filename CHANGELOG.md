@@ -15,6 +15,20 @@ au 2026-09-14.
 
 ## [Non publié]
 
+## [v1.8.3] - 2026-10-21
+
+### Corrigé
+
+- `docker-build.yml` : le cache de la base Trivy passe de `~/.cache/trivy` à
+  `${{ runner.temp }}/trivy`. `trivy-action` transmet `cache-dir` tel quel à
+  `TRIVY_CACHE_DIR`, sans développer `~` : Trivy créait un dossier `~` dans
+  l'espace de travail, et l'étape de publication, qui reconstruit depuis ce
+  contexte, l'embarquait dans l'image si le `.dockerignore` du dépôt ne
+  l'excluait pas (1,6 Go dans l'image 1.3.0 de `groupe-extern-wordpress`). Le
+  fichier `trivyignores` écrit par l'action est aussi retiré avant la
+  publication. Effet pour les dépôts consommateurs : images plus légères au
+  prochain build, sans changement de leur côté.
+
 ## [v1.8.2] - 2026-09-30
 
 ### Documentation
