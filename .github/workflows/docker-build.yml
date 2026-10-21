@@ -206,7 +206,7 @@ jobs:
         if: inputs.with-trivy && !inputs.push
         uses: actions/cache@v6  # zizmor: ignore[cache-poisoning]
         with:
-          path: ~/.cache/trivy
+          path: ${{ runner.temp }}/trivy
           key: trivy-db-${{ steps.trivy-date.outputs.date }}
           restore-keys: |
             trivy-db-
@@ -235,11 +235,22 @@ jobs:
           # le controle qui justifie ce job ne tourne jamais, et l'echec ressemble
           # a une trouvaille. Le fichier n'est donc passe que s'il existe.
           trivyignores: ${{ inputs.trivy-ignore-file != '' && hashFiles(inputs.trivy-ignore-file) != '' && inputs.trivy-ignore-file || '' }}
-          cache-dir: ~/.cache/trivy
+          # Hors de l'espace de travail : trivy-action ne developpe pas "~", et
+          # un "~/.cache/trivy" litteral creait un dossier "~" dans le contexte
+          # de build, que l'etape de publication embarquait dans l'image (1,6 Go
+          # constates le 2026-10-21). runner.temp est vide a chaque job.
+          cache-dir: ${{ runner.temp }}/trivy
           # Ce job ne veut que le scan CVE (with-trivy) : sans ce réglage, Trivy scanne
           # aussi secrets et mauvaises configurations par défaut, plus lent et hors
           # périmètre de cette étape (amendement 2026-08-06).
           scanners: vuln
+
+      # trivy-action ecrit son fichier d'exclusions consolide ("trivyignores")
+      # dans l'espace de travail ; l'etape de publication reconstruit depuis ce
+      # meme contexte et l'embarquerait dans l'image.
+      - name: Remove Trivy leftovers from build context
+        if: inputs.with-trivy
+        run: rm -f trivyignores
 
       - name: Push with attestations
         if: inputs.push
