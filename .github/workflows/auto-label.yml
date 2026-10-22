@@ -174,15 +174,38 @@ jobs:
                 per_page: 100,
               });
 
-              // Deux formes selon le mode de fusion : commit de merge, ou titre
-              // suffixé du numéro quand la PR a été écrasée (squash).
+              // Le numéro de la PR d'origine se lit de trois façons, selon le mode de
+              // fusion de la PR transportée : commit de merge, titre suffixé après un
+              // squash, et, pour tout le reste, l'association commit -> PR que tient
+              // GitHub. Seule celle-ci couvre le rebase, qui conserve les titres
+              // d'origine sans aucun numéro.
               const numeros = new Set();
+              const sansNumero = [];
               for (const c of commits) {
                 const titre = c.commit.message.split('\n')[0];
                 const merge = titre.match(/^Merge pull request #(\d+)\b/);
                 if (merge) { numeros.add(Number(merge[1])); continue; }
                 const squash = titre.match(/\(#(\d+)\)\s*$/);
-                if (squash) { numeros.add(Number(squash[1])); }
+                if (squash) { numeros.add(Number(squash[1])); continue; }
+                sansNumero.push(c.sha);
+              }
+              for (let i = 0; i < sansNumero.length; i += 10) {
+                await Promise.all(sansNumero.slice(i, i + 10).map(async (sha) => {
+                  try {
+                    const { data } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      commit_sha: sha,
+                    });
+                    // Seules comptent les PR fusionnées dans la branche d'intégration :
+                    // un commit peut aussi appartenir à une PR ouverte ou d'une autre branche.
+                    for (const p of data) {
+                      if (p.merged_at && p.base.ref === integration) numeros.add(p.number);
+                    }
+                  } catch (e) {
+                    console.log(`Commit ${sha.slice(0, 7)} : association illisible (${e.status}), ignoré.`);
+                  }
+                }));
               }
               numeros.delete(pr.number);
 

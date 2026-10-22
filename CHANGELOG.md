@@ -15,6 +15,22 @@ au 2026-09-14.
 
 ## [Non publié]
 
+## [v1.8.4] - 2026-10-22
+
+### Corrigé
+
+- `auto-label.yml` : la PR d'intégration (`dev` vers `main`) retrouve les PR
+  qu'elle transporte même quand elles ont été fusionnées en **rebase**. Le
+  workflow ne lisait que les numéros écrits dans les titres de commit (commit de
+  merge, ou suffixe `(#N)` après un squash) : un rebase conserve les titres
+  d'origine, aucune PR n'était trouvée, aucun label n'était posé et le contrôle
+  des conventions échouait à chaque intégration avec « Requires exactly 1 of ».
+  Les commits sans numéro sont désormais rattachés à leur PR par l'API GitHub
+  (`listPullRequestsAssociatedWithCommit`), limitée aux PR fusionnées dans la
+  branche d'intégration. Effet pour les dépôts consommateurs : plus de label à
+  poser à la main après un rebase ; aucun changement pour les modes merge et
+  squash.
+
 ## [v1.8.3] - 2026-10-21
 
 ### Corrigé

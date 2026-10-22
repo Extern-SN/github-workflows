@@ -490,8 +490,10 @@ sous un numéro de patch.
 Les PR que l'intégration transporte, elles, sont toutes labellisées, c'est la
 règle du dépôt. L'information existe déjà, ce workflow la lit : il relève les
 numéros de PR dans les messages de commit (commit de fusion ou titre suffixé
-après un squash), récupère leurs labels, et retient **le plus fort** selon
-`label-ranking`.
+après un squash) et, pour les autres commits, auprès de GitHub, qui relie
+chaque commit à la PR dont il provient. Cette seconde voie couvre le **rebase**,
+qui conserve les titres d'origine sans numéro. Il récupère ensuite leurs labels
+et retient **le plus fort** selon `label-ranking`.
 
 Une seule `feature` parmi dix `fix` impose donc un incrément mineur, ce qui est
 le comportement attendu : la fonctionnalité ne doit pas sortir sous un numéro de
