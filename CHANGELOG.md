@@ -15,6 +15,8 @@ au 2026-09-14.
 
 ## [Non publié]
 
+## [v1.9.0] - 2026-11-27
+
 ### Ajouté
 
 - `docker-build.yml` : le défaut de l'entrée `runner` lit d'abord la variable
