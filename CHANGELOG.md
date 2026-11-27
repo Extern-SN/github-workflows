@@ -15,6 +15,23 @@ au 2026-09-14.
 
 ## [Non publié]
 
+## [v1.9.0] - 2026-11-27
+
+### Ajouté
+
+- `docker-build.yml` : le défaut de l'entrée `runner` lit d'abord la variable
+  d'organisation `CI_BUILD_RUNNER_LABELS`, puis `CI_RUNNER_LABELS`, puis le
+  runner self-hosted du Groupe. Les builds d'image peuvent ainsi partir sur des
+  runners dédiés pendant que les autres jobs restent sur `CI_RUNNER_LABELS`,
+  par exemple sur GitHub-hosted sans que les builds consomment le quota de
+  minutes. Comportement inchangé tant que la variable n'existe pas. Aucun
+  appelant n'a à être modifié.
+
+### Documentation
+
+- README, section "Choix du runner" : variable `CI_BUILD_RUNNER_LABELS`, ordre
+  de repli, `needs:` pour construire après les tests.
+
 ## [v1.8.4] - 2026-10-22
 
 ### Corrigé
