@@ -81,7 +81,7 @@ jobs:
 
 | Nom | Type | Défaut | Description |
 |-----|------|--------|-------------|
-| `runner` | string | variable d'org `CI_RUNNER_LABELS` | [Runner d'exécution](#choix-du-runner-entrée-runner). Ne pas passer (sauf dépôt public) |
+| `runner` | string | variable d'org `CI_BUILD_RUNNER_LABELS`, sinon `CI_RUNNER_LABELS` | [Runner des builds d'image](#runner-des-builds-dimage--ci_build_runner_labels). Ne pas passer (sauf dépôt public) |
 | `registry` | string | — | Registre cible |
 | `image-name` | string | — | Nom image sans registre |
 | `dockerfile` | string | `Dockerfile` | Chemin du Dockerfile |
@@ -650,6 +650,9 @@ gh variable get CI_RUNNER_LABELS --org Extern-SN
 |-----|------|--------|-------------|
 | `runner` | string | `vars.CI_RUNNER_LABELS`, sinon `'["self-hosted","Linux","X64","ovh-ppr"]'` | Labels du runner, au format JSON |
 
+Exception : `docker-build.yml` lit d'abord `CI_BUILD_RUNNER_LABELS` (voir
+[Runner des builds d'image](#runner-des-builds-dimage--ci_build_runner_labels)).
+
 Trois règles :
 
 1. **Un dépôt appelant ne passe pas `runner:`.** Le passer fige ce dépôt et le
@@ -713,6 +716,59 @@ jobs:
 `name: ${{ matrix.runner && '...' }}` n'est pas décoratif : sans référence à
 `matrix` dans le nom, GitHub ajoute la valeur de la matrice au nom du check
 (`Lint (["self-hosted",...])`), même avec un `name:` explicite.
+
+### Runner des builds d'image : `CI_BUILD_RUNNER_LABELS`
+
+Les builds d'image coûtent l'essentiel du temps de CI : sur GitHub-hosted, ils
+épuisent le quota de minutes, et sur un runner léger, ils sont lents. Une
+seconde variable d'organisation les envoie sur des runners dédiés, sans
+toucher au reste du parc :
+
+```bash
+# Builds d'image sur les runners portant le label "build"
+gh variable set CI_BUILD_RUNNER_LABELS --org Extern-SN --visibility all --body '["self-hosted","Linux","X64","build"]'
+
+# Retour : les builds suivent à nouveau CI_RUNNER_LABELS
+gh variable delete CI_BUILD_RUNNER_LABELS --org Extern-SN
+```
+
+Seul `docker-build.yml` la lit, dans cet ordre :
+
+| Ordre | Source |
+|-------|--------|
+| 1 | `vars.CI_BUILD_RUNNER_LABELS` |
+| 2 | `vars.CI_RUNNER_LABELS` |
+| 3 | `'["self-hosted","Linux","X64","ovh-ppr"]'` |
+
+Tant que `CI_BUILD_RUNNER_LABELS` n'existe pas, rien ne change. Elle se
+surcharge par dépôt comme `CI_RUNNER_LABELS`, et prend le même format JSON.
+
+Les deux variables se combinent, par exemple les jobs légers sur GitHub-hosted
+(`CI_RUNNER_LABELS='"ubuntu-22.04"'`) et les builds sur un runner self-hosted
+(`CI_BUILD_RUNNER_LABELS`).
+
+**Le build n'attend pas les tests de lui-même.** Un appelant qui veut construire
+seulement après ses tests le déclare par `needs:` sur le job qui appelle
+`docker-build.yml` :
+
+```yaml
+jobs:
+  tests:
+    uses: Extern-SN/github-workflows/.github/workflows/php-tests.yml@v1
+  docker:
+    needs: tests
+    uses: Extern-SN/github-workflows/.github/workflows/docker-build.yml@v1
+```
+
+Un job de build écrit directement dans un dépôt reprend le motif matrice avec
+la même chaîne de repli :
+
+```yaml
+    strategy:
+      matrix:
+        runner: ["${{ vars.CI_BUILD_RUNNER_LABELS || vars.CI_RUNNER_LABELS || '[\"self-hosted\",\"Linux\",\"X64\",\"ovh-ppr\"]' }}"]
+    runs-on: ${{ fromJSON(matrix.runner) }}
+```
 
 ### Ce qu'il n'y a pas : un repli automatique
 
